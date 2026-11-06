@@ -1,10 +1,10 @@
 "use client";
 
 import * as THREE from "three";
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo, useRef } from "react";
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { pillola } from "./base";
-import { Persona } from "./persona";
+import { Fotogrammi, H, L, RIGHE, Y0, type Posa } from "./pixel";
 import { PERSONAGGI, zona, type Azione, type Personaggio, type ZonaId } from "@/content/azienda";
 
 /*
@@ -30,11 +30,14 @@ function Figura({
   saluta?: boolean;
   onParla: (id: string) => void;
 }) {
-  const persona = useMemo(() => new Persona(p.aspetto), [p]);
-  useEffect(() => {
-    if (azione === "abbacchia") persona.conAsta();
-    if (persona.asta) persona.asta.visible = azione === "abbacchia";
-  }, [azione, persona]);
+  const alto = p.aspetto.altezza ?? 1.75;
+  // un pixel in metri: la figura, dai capelli alla suola, è alta 52 righe
+  const px = alto / (RIGHE - 1);
+  const fotogrammi = useMemo(() => new Fotogrammi(p.aspetto), [p]);
+  const materiale = useMemo(
+    () => new THREE.MeshBasicMaterial({ map: fotogrammi.prendi({ posa: "fermo", f: 0, chiusi: false, bocca: false }), alphaTest: 0.5, side: THREE.DoubleSide, color: "#FFF6EA" }),
+    [fotogrammi]
+  );
   const g = useRef<THREE.Group>(null);
   const etichetta = useRef<THREE.Sprite>(null);
   const nome = useMemo(() => {
@@ -43,28 +46,33 @@ function Figura({
     return pillola(cosa[0].toUpperCase() + cosa.slice(1), p.sotto);
   }, [p]);
   const { camera } = useThree();
-  const inizio = useRef<number | null>(null);
-  useFrame(({ clock }, dt) => {
+  const stato = useRef({ inizio: -1, battito: 2 + Math.random() * 3, bocca: false, prossimaBocca: 0, sfasa: Math.random() * 3 });
+  useFrame(({ clock }) => {
     if (!g.current) return;
-    const t = clock.elapsedTime;
-    if (inizio.current === null) inizio.current = t;
+    const t = clock.elapsedTime, s = stato.current;
+    if (s.inizio < 0) s.inizio = t;
     const dx = camera.position.x - g.current.position.x, dz = camera.position.z - g.current.position.z;
     const d = Math.hypot(dx, dz);
-    const versoCamera = Math.atan2(dx, dz);
-    // chi lavora resta rivolto al lavoro e gira solo la testa; gli altri si girano del tutto quando parlano o sei vicino
-    const lavora = azione !== "fermo" && !parla;
-    const obiettivo = !lavora && (parla || d < 10) ? versoCamera : verso;
-    let delta = obiettivo - g.current.rotation.y;
-    delta = Math.atan2(Math.sin(delta), Math.cos(delta));
-    g.current.rotation.y += delta * (1 - Math.exp(-2.5 * dt));
-    let testa = versoCamera - g.current.rotation.y;
-    testa = Math.atan2(Math.sin(testa), Math.cos(testa));
-    persona.sguardo = d < 14 && Math.abs(testa) < 1.6 ? testa : 0;
-    persona.aggiorna(t, Math.min(dt, 0.1), parla ? "fermo" : azione, parla, !!saluta && t - inizio.current < 2.6);
+    // sempre rivolta verso chi guarda, come nei giochi a 16 bit
+    g.current.rotation.y = Math.atan2(dx, dz);
+    const posa: Posa = parla ? "parla" : saluta && t - s.inizio < 2.8 ? "saluta" : azione === "fermo" ? "fermo" : azione;
+    const ritmo = posa === "saluta" ? 0.22 : posa === "parla" ? 0.42 : posa === "abbacchia" ? 0.3 : posa === "fermo" ? 0.8 : 0.55;
+    const f = (Math.floor((t + s.sfasa) / ritmo) % 2) as 0 | 1;
+    if (t > s.battito) s.battito = t + 2.5 + Math.random() * 3.5;
+    const chiusi = s.battito - t < 0.13;
+    if (parla && t > s.prossimaBocca) {
+      s.bocca = !s.bocca;
+      s.prossimaBocca = t + 0.08 + Math.random() * 0.14;
+    }
+    const mappa = fotogrammi.prendi({ posa, f, chiusi, bocca: parla && s.bocca });
+    if (materiale.map !== mappa) {
+      materiale.map = mappa;
+      materiale.needsUpdate = true;
+    }
     if (etichetta.current) {
-      const s = THREE.MathUtils.clamp(1.7 - d / 14, 0, 1);
-      (etichetta.current.material as THREE.SpriteMaterial).opacity = s;
-      etichetta.current.visible = s > 0.02;
+      const o = THREE.MathUtils.clamp(1.7 - d / 14, 0, 1);
+      (etichetta.current.material as THREE.SpriteMaterial).opacity = o;
+      etichetta.current.visible = o > 0.02;
     }
   });
   const clic = (e: ThreeEvent<MouseEvent>) => {
@@ -72,12 +80,14 @@ function Figura({
     e.stopPropagation();
     onParla(p.id);
   };
-  const alto = p.aspetto.altezza ?? 1.75;
+  // la tela è 32 × 80: la suola sta alla riga Y0 + 52, una riga sopra il bordo basso
+  const largo = L * px, altoTela = H * px;
+  const centro = altoTela / 2 - (H - (Y0 + RIGHE)) * px;
+  void verso;
   return (
     <group
       ref={g}
       position={pos}
-      rotation-y={verso}
       onClick={clic}
       onPointerOver={(e) => {
         e.stopPropagation();
@@ -87,12 +97,19 @@ function Figura({
         document.body.style.cursor = "";
       }}
     >
-      <primitive object={persona.radice} />
+      <mesh position={[0, centro, 0]} material={materiale} renderOrder={3}>
+        <planeGeometry args={[largo, altoTela]} />
+      </mesh>
+      {/* l'ombra morbida a terra */}
+      <mesh position={[0, 0.03, 0]} rotation-x={-Math.PI / 2}>
+        <circleGeometry args={[0.32, 20]} />
+        <meshBasicMaterial color="#000" transparent opacity={0.28} depthWrite={false} />
+      </mesh>
       {/* un volume invisibile, più facile da cliccare della figura */}
       <mesh position={[0, alto / 2, 0]} visible={false}>
         <boxGeometry args={[0.8, alto + 0.1, 0.8]} />
       </mesh>
-      <sprite ref={etichetta} position={[0, alto + 0.42, 0]} scale={[0.3 * nome.rapporto, 0.3, 1]} renderOrder={10}>
+      <sprite ref={etichetta} position={[0, alto + 0.45, 0]} scale={[0.3 * nome.rapporto, 0.3, 1]} renderOrder={10}>
         <spriteMaterial map={nome.texture} transparent depthWrite={false} />
       </sprite>
     </group>
