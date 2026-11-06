@@ -295,7 +295,7 @@ class Musica {
     const g = this.s.uscita.gain, t = this.s.ctx.currentTime;
     g.cancelScheduledValues(t);
     g.setValueAtTime(g.value, t);
-    g.linearRampToValueAtTime(0.55, t + 0.6);
+    g.linearRampToValueAtTime(0.26, t + 0.6);
     if (!this.traccia) this.avvia(this.zona);
     if (this.timer === null) this.timer = window.setInterval(() => this.programma(), 25);
     this.ascoltatori.forEach((f) => f(true));
