@@ -29,7 +29,9 @@ export default function Esperienza() {
   const [progresso, setProgresso] = useState(0);
   const [pronta, setPronta] = useState(false);
   const [entrato, setEntrato] = useState(false);
-  const [modo, setModo] = useState<Modo>("guida");
+  const [modo, setModo] = useState<Modo>("cammina");
+  /** la schermata dei comandi, come nei videogiochi: compare entrando, si riapre col "?" */
+  const [comandi, setComandi] = useState(false);
   const [zonaId, setZonaId] = useState<ZonaId>("cancello");
   const [vicina, setVicina] = useState<ZonaId>("cancello");
   const [fasi, setFasi] = useState(FASI_INIZIALI);
@@ -109,14 +111,14 @@ export default function Esperienza() {
     setFasi((f) => ({ ...f, [zonaAttiva]: k }));
   };
 
-  // da tastiera: frecce sinistra e destra cambiano fase (in visita guidata), Esc chiude il dialogo
+  // da tastiera: Esc chiude il dialogo e i comandi; le frecce servono a camminare
   useEffect(() => {
     const tasti = (e: KeyboardEvent) => {
       if (!entrato) return;
-      if (e.key === "Escape") setDialogo(null);
-      if (modo !== "guida" || !z.fasi) return;
-      if (e.key === "ArrowRight") cambiaFase(fase + 1);
-      if (e.key === "ArrowLeft") cambiaFase(fase - 1);
+      if (e.key === "Escape") {
+        setDialogo(null);
+        setComandi(false);
+      }
     };
     window.addEventListener("keydown", tasti);
     return () => window.removeEventListener("keydown", tasti);
@@ -193,7 +195,14 @@ export default function Esperienza() {
             onVicina={setVicina}
             onParla={parla}
             onPronta={() => setPronta(true)}
-            onMosso={() => setMosso(true)}
+            onMosso={() => {
+              setMosso(true);
+              setComandi(false);
+            }}
+            onCammina={() => {
+              setModo("cammina");
+              setComandi(false);
+            }}
           />
         </div>
       )}
@@ -208,6 +217,8 @@ export default function Esperienza() {
         pronta={pronta}
         onEntra={() => {
           setEntrato(true);
+          setComandi(true);
+          window.setTimeout(() => setCancelloAperto(true), 1500);
           // il clic su "Entra" è il gesto che permette al browser di suonare
           musica.zonaAttiva("cancello");
           musica.accendi();
@@ -222,6 +233,9 @@ export default function Esperienza() {
               <p className="firma-ruolo">{AZIENDA.luogo}</p>
             </div>
             <div className="comandi">
+            <button className="aiuto" onClick={() => setComandi((v) => !v)} aria-label="Comandi" title="Comandi">
+              ?
+            </button>
             <button
               className="suono"
               onClick={() => musica.interruttore()}
@@ -248,18 +262,20 @@ export default function Esperienza() {
             </div>
           </header>
 
-          <p className={`guida${mosso ? " guida--via" : ""}`} aria-hidden="true">
+          {comandi && <Comandi tocco={ambiente.tocco} onChiudi={() => setComandi(false)} />}
+
+          <p className={`guida${mosso || comandi ? " guida--via" : ""}`} aria-hidden="true">
             {modo === "guida"
               ? ambiente.tocco
                 ? "Trascina per guardarti intorno · tocca le etichette per spostarti · tocca le persone per parlare"
                 : "Trascina per guardarti intorno · clic sulle etichette per spostarti · clic sulle persone per parlare"
               : ambiente.tocco
-                ? "Usa il joystick per camminare · trascina per guardarti intorno"
-                : "W A S D o frecce per camminare · Shift per correre · trascina per guardarti intorno"}
+                ? "Joystick per camminare · trascina per guardarti intorno · segui le luci dorate"
+                : "W A S D o frecce per camminare · Shift per correre · trascina per guardarti intorno · segui le luci dorate"}
           </p>
 
           {/* il pannello della zona, con le fasi */}
-          <aside className={`pannello${pannello ? "" : " pannello--chiuso"}`} key={zonaAttiva} aria-labelledby="pannello-titolo">
+          <aside className={`pannello${pannello ? "" : " pannello--chiuso"}${comandi ? " pannello--nascosto" : ""}`} key={zonaAttiva} aria-labelledby="pannello-titolo">
             <button className="pannello-maniglia" onClick={() => setPannello((v) => !v)} aria-expanded={pannello}>
               <span className="occhiello">{z.occhiello}</span>
               <span className="pannello-segno" aria-hidden="true">
@@ -359,7 +375,7 @@ export default function Esperienza() {
             ))}
           </nav>
 
-          {modo === "cammina" && ambiente.tocco && <Joystick movimento={movimento} />}
+          {ambiente.tocco && <Joystick movimento={movimento} />}
         </div>
       )}
     </>
@@ -403,6 +419,64 @@ function Joystick({ movimento }: { movimento: React.MutableRefObject<Movimento> 
       onPointerCancel={fine}
     >
       <i style={{ transform: `translate(${p.x * 34}px, ${p.y * 34}px)` }} />
+    </div>
+  );
+}
+
+/** La schermata dei comandi, come all'inizio di un videogioco. */
+function Comandi({ tocco, onChiudi }: { tocco: boolean; onChiudi: () => void }) {
+  return (
+    <div className="comandi-gioco" role="dialog" aria-label="Come muoversi">
+      <p className="occhiello">Come muoversi</p>
+      <h2>Benvenuto in azienda</h2>
+      {tocco ? (
+        <div className="comandi-righe">
+          <div className="riga">
+            <span className="stick" aria-hidden="true">
+              <i />
+            </span>
+            <span>Joystick in basso a sinistra: cammina</span>
+          </div>
+          <div className="riga">
+            <span className="tasto tasto--largo">☝ trascina</span>
+            <span>Trascina con il dito: guardati intorno</span>
+          </div>
+        </div>
+      ) : (
+        <div className="comandi-righe">
+          <div className="riga">
+            <span className="croce" aria-hidden="true">
+              <kbd className="tasto c-su">W</kbd>
+              <kbd className="tasto c-sx">A</kbd>
+              <kbd className="tasto c-giu">S</kbd>
+              <kbd className="tasto c-dx">D</kbd>
+            </span>
+            <span className="croce" aria-hidden="true">
+              <kbd className="tasto c-su">↑</kbd>
+              <kbd className="tasto c-sx">←</kbd>
+              <kbd className="tasto c-giu">↓</kbd>
+              <kbd className="tasto c-dx">→</kbd>
+            </span>
+            <span>Cammina. Con le frecce ← → giri lo sguardo</span>
+          </div>
+          <div className="riga">
+            <kbd className="tasto tasto--largo">Shift</kbd>
+            <span>Tienilo premuto per correre</span>
+          </div>
+          <div className="riga">
+            <kbd className="tasto tasto--largo">🖱 trascina</kbd>
+            <span>Guardati intorno</span>
+          </div>
+        </div>
+      )}
+      <ul className="comandi-note">
+        <li>Segui le <b>luci dorate</b> a terra e i cartelli: portano agli ingressi.</li>
+        <li>Clicca sulle <b>persone</b> per parlarci, sulle <b>etichette</b> o sui pulsanti in basso per andarci in automatico.</li>
+        <li>Per gli uliveti si sale sul <b>trattore</b> nello spiazzale.</li>
+      </ul>
+      <button className="entra" onClick={onChiudi}>
+        Ho capito, si parte
+      </button>
     </div>
   );
 }

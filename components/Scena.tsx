@@ -14,7 +14,8 @@ import Frantoio from "./mondo/Frantoio";
 import Persone from "./mondo/Persone";
 import Oggetti from "./mondo/Oggetti";
 import Furgone, { Cartello } from "./mondo/Furgone";
-import { ALTROVE, CARTELLO_ULIVETI, FURGONE_FATTORIA, altrove } from "@/content/luoghi";
+import Percorsi from "./mondo/Percorsi";
+import { ALTROVE, CARTELLO_ULIVETI, CASETTE, FURGONE_FATTORIA, LAGHETTO, SERRA, SPIAZZALE, altrove, dallaSerra } from "@/content/luoghi";
 
 export type Modo = "guida" | "cammina";
 export type Movimento = { x: number; y: number };
@@ -33,9 +34,43 @@ type Props = {
   onParla: (id: string) => void;
   onPronta: () => void;
   onMosso: () => void;
+  /** chi è in visita guidata e preme un tasto di movimento torna a camminare */
+  onCammina: () => void;
   /** il velo nero del viaggio in furgone, con la scritta */
   schermo: React.RefObject<HTMLDivElement | null>;
 };
+
+/**
+ * Gli ostacoli per chi cammina: il capannone si attraversa solo dalla porta, il frantoio solo dal davanti;
+ * casette e laghetto non si attraversano. Restituisce true se il passo da (px, pz) a (x, z) non è permesso.
+ */
+function bloccato(px: number, pz: number, x: number, z: number) {
+  // il capannone
+  const [a, b] = dallaSerra(px, pz), [c, d] = dallaSerra(x, z);
+  const M = SERRA.lungo / 2, L = SERRA.largo / 2;
+  const dentro = (u: number, v: number) => Math.abs(u) < M && Math.abs(v) < L;
+  if (dentro(a, b) !== dentro(c, d)) {
+    const porta = Math.abs(a) < 1.2 && Math.abs(c) < 1.2 && b > L - 1.2 && d > L - 1.2;
+    if (!porta) return true;
+  }
+  // le casette
+  for (const k of CASETTE) {
+    const v = Math.atan2(SPIAZZALE.x - k.x, SPIAZZALE.z - k.z);
+    const dx = x - k.x, dz = z - k.z;
+    const u = dx * Math.cos(v) - dz * Math.sin(v), w = dx * Math.sin(v) + dz * Math.cos(v);
+    if (Math.abs(u) < k.l / 2 + 0.3 && Math.abs(w) < k.p / 2 + 0.3) return true;
+  }
+  // il laghetto
+  if (Math.abs(x - LAGHETTO.x) < LAGHETTO.l / 2 + 1 && Math.abs(z - LAGHETTO.z) < LAGHETTO.p / 2 + 1) return true;
+  // il frantoio: muri dietro e ai lati, aperto davanti (verso +z)
+  const fz = (q: number) => q - ALTROVE[2];
+  const nelFrantoio = (u: number, v: number) => u > -19.3 && u < -8.7 && fz(v) > -49.8 && fz(v) < -42.4;
+  if (nelFrantoio(px, pz) !== nelFrantoio(x, z)) {
+    const davanti = fz(pz) > -43 && fz(z) > -43 && x > -18.4 && x < -9.6;
+    if (!davanti) return true;
+  }
+  return false;
+}
 
 /** In quale area sta un punto: la fattoria o l'area lontana degli uliveti. */
 const lontano = (z: number) => z < ALTROVE[2] / 2;
@@ -153,7 +188,8 @@ function Regia({
   stretto,
   furgone,
   schermo,
-}: Pick<Props, "modo" | "zonaId" | "movimento" | "onVicina" | "onMosso" | "stretto" | "schermo"> & { furgone: React.RefObject<THREE.Group | null> }) {
+  onCammina,
+}: Pick<Props, "modo" | "zonaId" | "movimento" | "onVicina" | "onMosso" | "stretto" | "schermo" | "onCammina"> & { furgone: React.RefObject<THREE.Group | null> }) {
   const { camera, gl } = useThree();
   const st = useRef({
     yaw: 0,
@@ -396,6 +432,9 @@ function Regia({
       s.pitch = THREE.MathUtils.lerp(v.daPitch, v.aPitch, k);
       if (v.t >= 1) s.volo = null;
     } else if (modo === "guida") {
+      // un tasto di movimento (o il joystick) e si torna a camminare
+      const t = s.tasti;
+      if (t.has("w") || t.has("a") || t.has("s") || t.has("d") || t.has("arrowup") || t.has("arrowdown") || t.has("arrowleft") || t.has("arrowright") || movimento.current.x || movimento.current.y) onCammina();
       // lo sguardo spostato col trascinamento torna piano al centro
       if (!s.premuto) {
         s.offYaw *= Math.exp(-0.25 * dt);
@@ -416,12 +455,22 @@ function Regia({
         onMosso();
         const fx = -Math.sin(s.yaw), fz = -Math.cos(s.yaw);
         const p = camera.position;
+        const prima = { x: p.x, z: p.z };
         p.x += (fx * av + -fz * la) * vel;
         p.z += (fz * av + fx * la) * vel;
         const base = lontano(p.z) ? ALTROVE[2] : 0;
         p.x = THREE.MathUtils.clamp(p.x, -60, 60);
         p.z = THREE.MathUtils.clamp(p.z, base - 84, base + 60);
         // il muretto davanti, tranne il cancello
+        if (bloccato(prima.x, prima.z, p.x, p.z)) {
+          // si prova a scivolare lungo l'ostacolo: prima solo in x, poi solo in z
+          if (!bloccato(prima.x, prima.z, p.x, prima.z)) p.z = prima.z;
+          else if (!bloccato(prima.x, prima.z, prima.x, p.z)) p.x = prima.x;
+          else {
+            p.x = prima.x;
+            p.z = prima.z;
+          }
+        }
         if (!lontano(p.z) && Math.abs(p.z - 6) < 0.5 && Math.abs(p.x) > 1.9 && Math.abs(p.x) < 9.2) p.z = p.z > 6 ? 6.5 : 5.5;
       }
       camera.position.y = THREE.MathUtils.lerp(camera.position.y, OCCHI, 1 - Math.exp(-4 * dt));
@@ -535,6 +584,7 @@ export default function Scena(props: Props) {
         movimento={props.movimento}
         onVicina={props.onVicina}
         onMosso={props.onMosso}
+        onCammina={props.onCammina}
         stretto={props.stretto}
         furgone={furgone}
         schermo={props.schermo}
@@ -550,6 +600,7 @@ export default function Scena(props: Props) {
       <Furgone ref={furgone} position={parcheggio.p} rotation={[0, parcheggio.r, 0]} onClic={(qui) => props.onVai(qui ? "spiazzo" : "uliveto")} />
       <Cartello p={CARTELLO_ULIVETI} verso={0.22} onClic={() => props.onVai("uliveto")} />
       <Oggetti fasi={props.fasi} />
+      <Percorsi visibile={props.modo === "cammina"} />
       <Persone zonaAndrea={props.zonaId} faseUliveto={props.fasi.uliveto} parlante={props.parlante} onParla={props.onParla} />
       {ZONE.map((z) => (
         <Segnaposto key={z.id} id={z.id} attivo={props.modo === "guida" && props.zonaId === z.id} onVai={props.onVai} />

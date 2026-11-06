@@ -74,7 +74,7 @@ function Trazzere() {
     <group>
       {geos.map((g, i) => (
         <mesh key={i} geometry={g} receiveShadow>
-          <meshLambertMaterial map={mappa} color="#F2E2CC" polygonOffset polygonOffsetFactor={-1} side={THREE.DoubleSide} />
+          <meshLambertMaterial map={mappa} color="#FFF8EC" emissive="#3A2E20" polygonOffset polygonOffsetFactor={-1} side={THREE.DoubleSide} />
         </mesh>
       ))}
       <mesh geometry={disco} rotation-x={-Math.PI / 2} position={[SPIAZZO.x, 0.025, SPIAZZO.z]} receiveShadow>
