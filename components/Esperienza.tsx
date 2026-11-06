@@ -41,6 +41,7 @@ export default function Esperienza() {
   const [pannello, setPannello] = useState(true);
   const [mosso, setMosso] = useState(false);
   const movimento = useRef<Movimento>({ x: 0, y: 0 });
+  const schermo = useRef<HTMLDivElement>(null);
   const [suono, setSuono] = useState(false);
   useEffect(() => musica.ascolta(setSuono), []);
 
@@ -187,6 +188,7 @@ export default function Esperienza() {
             stretto={ambiente.stretto}
             ridotto={ambiente.ridotto}
             movimento={movimento}
+            schermo={schermo}
             onVai={vai}
             onVicina={setVicina}
             onParla={parla}
@@ -195,6 +197,11 @@ export default function Esperienza() {
           />
         </div>
       )}
+
+      {/* il velo nero del viaggio in furgone */}
+      <div className="viaggio" ref={schermo} aria-live="polite">
+        <p />
+      </div>
 
       <Avvio
         progresso={progresso}

@@ -3,6 +3,7 @@
 import * as THREE from "three";
 import { useEffect, useMemo, useState } from "react";
 import { generatore, modello, posa, scatola, textura } from "./base";
+import { ALTROVE, CANCELLO_Z, CASETTE, LAGHETTO, MAIS, SPIAZZALE, STRADE_FATTORIA, STRADE_ULIVETO, dallaSerra, SERRA } from "@/content/luoghi";
 
 /*
  * La terra rossa, le trazzere, lo spiazzo, i muretti a secco del perimetro, le colline lontane,
@@ -13,14 +14,10 @@ import { generatore, modello, posa, scatola, textura } from "./base";
 
 const rilievo = new THREE.Vector2(1, 1);
 
-/** Le trazzere, come spezzate: [x, z]. Larghe 3,2 m. */
-export const TRAZZERE: [number, number][][] = [
-  [[0, 52], [0, 34], [0, 10]],
-  [[-8, 2], [-14, 0.5], [-20, 0]],
-  [[8, -1], [13, -1], [17.5, 0]],
-  [[9, -5], [13.5, -12], [14, -22], [10, -30], [2, -37], [-8, -39.5], [-14, -40]],
-];
-export const SPIAZZO = { x: 0, z: 0, r: 12 };
+/** La pianta: le trazzere, lo spiazzale, l'area lontana degli uliveti. */
+export const TRAZZERE = STRADE_FATTORIA;
+export const SPIAZZO = SPIAZZALE;
+const TRAZZERE_LONTANE = STRADE_ULIVETO.map((t) => t.map(([x, z]) => [x + ALTROVE[0], z + ALTROVE[2]] as [number, number]));
 
 function nastro(punti: [number, number][], larghezza: number, passo = 3) {
   const curva = new THREE.CatmullRomCurve3(punti.map(([x, z]) => new THREE.Vector3(x, 0, z)), false, "catmullrom", 0.3);
@@ -54,18 +51,18 @@ function nastro(punti: [number, number][], larghezza: number, passo = 3) {
 }
 
 function Terra() {
-  const colore = useMemo(() => textura("terra-colore.webp", true, [70, 70]), []);
-  const ril = useMemo(() => textura("terra-rilievo.webp", false, [70, 70]), []);
+  const colore = useMemo(() => textura("terra-colore.webp", true, [200, 200]), []);
+  const ril = useMemo(() => textura("terra-rilievo.webp", false, [200, 200]), []);
   return (
-    <mesh rotation-x={-Math.PI / 2} receiveShadow>
-      <planeGeometry args={[320, 320]} />
+    <mesh rotation-x={-Math.PI / 2} position={[0, 0, ALTROVE[2] / 2]} receiveShadow>
+      <planeGeometry args={[900, 900]} />
       <meshLambertMaterial map={colore} normalMap={ril} normalScale={rilievo} color="#F6E6D6" />
     </mesh>
   );
 }
 
 function Trazzere() {
-  const geos = useMemo(() => TRAZZERE.map((p) => nastro(p, 3.2)), []);
+  const geos = useMemo(() => [...TRAZZERE, ...TRAZZERE_LONTANE].map((p) => nastro(p, 3.4)), []);
   const mappa = useMemo(() => textura("trazzera-colore.webp", true), []);
   const disco = useMemo(() => {
     const g = new THREE.CircleGeometry(SPIAZZO.r, 48);
@@ -87,21 +84,16 @@ function Trazzere() {
   );
 }
 
-/** I muretti a secco: segmenti [x1, z1, x2, z2, altezza]. */
+/** I muretti a secco: segmenti [x1, z1, x2, z2, altezza]. Ai lati del cancello, e attorno all'uliveto lontano. */
+const OZ = ALTROVE[2];
 const MURETTI: [number, number, number, number, number][] = [
-  // fronte, ai lati del cancello
-  [-60, 34, -2.4, 34, 1.1],
-  [2.4, 34, 60, 34, 1.1],
-  // lati e fondo
-  [-60, 34, -60, -82, 1.0],
-  [60, 34, 60, -82, 1.0],
-  [-60, -82, 60, -82, 1.0],
-  // l'uliveto, dal resto del podere
-  [-60, -26, -4, -26, 0.8],
-  [17, -26, 60, -26, 0.8],
-  // lungo la trazzera d'ingresso
-  [-2.4, 34, -2.4, 16, 0.7],
-  [2.4, 34, 2.4, 16, 0.7],
+  [-9, CANCELLO_Z, -2.4, CANCELLO_Z, 1.1],
+  [2.4, CANCELLO_Z, 9, CANCELLO_Z, 1.1],
+  [-60, -26 + OZ, 11.5, -26 + OZ, 0.9],
+  [16.5, -26 + OZ, 60, -26 + OZ, 0.9],
+  [-60, -26 + OZ, -60, -82 + OZ, 1.0],
+  [60, -26 + OZ, 60, -82 + OZ, 1.0],
+  [-60, -82 + OZ, 60, -82 + OZ, 1.0],
 ];
 
 function Muretti() {
@@ -130,7 +122,7 @@ function Muretti() {
 }
 
 /** Le colline iblee all'orizzonte: un anello basso e irregolare, sfumato dalla nebbia. */
-function Colline() {
+function Colline({ centro = [0, 0] as [number, number] }) {
   const geo = useMemo(() => {
     const caso = generatore(77);
     const n = 160;
@@ -156,7 +148,7 @@ function Colline() {
     return g;
   }, []);
   return (
-    <mesh geometry={geo}>
+    <mesh geometry={geo} position={[centro[0], 0, centro[1]]}>
       <meshLambertMaterial color="#8C8A63" side={THREE.DoubleSide} />
     </mesh>
   );
@@ -165,7 +157,7 @@ function Colline() {
 /** Erba secca e sassi, sparsi lontano dalle trazzere e dalle colture. */
 export function vicinoAUnaTrazzera(x: number, z: number, margine: number) {
   if (Math.hypot(x - SPIAZZO.x, z - SPIAZZO.z) < SPIAZZO.r + margine) return true;
-  for (const t of TRAZZERE)
+  for (const t of [...TRAZZERE, ...TRAZZERE_LONTANE])
     for (let i = 0; i < t.length - 1; i++) {
       const [ax, az] = t[i], [bx, bz] = t[i + 1];
       const dx = bx - ax, dz = bz - az;
@@ -174,12 +166,14 @@ export function vicinoAUnaTrazzera(x: number, z: number, margine: number) {
     }
   return false;
 }
-/** Le aree occupate: casale, serra, mais, frantoio. */
+/** Le aree occupate: capannone, casette, laghetto, mais (fattoria); frantoio (area lontana). */
 export function occupato(x: number, z: number) {
-  if (x > -16 && x < 9 && z > -20 && z < -8.5) return true; // casale e annesso
-  if (x > -45 && x < -19 && z > -6 && z < 6) return true; // serra
-  if (x > 17 && x < 45 && z > -14 && z < 14) return true; // mais
-  if (x > -21 && x < -7 && z > -51 && z < -38) return true; // frantoio
+  const [lx, lz] = dallaSerra(x, z);
+  if (Math.abs(lx) < SERRA.lungo / 2 + 2 && Math.abs(lz) < SERRA.largo / 2 + 2) return true;
+  for (const c of CASETTE) if (Math.hypot(x - c.x, z - c.z) < Math.max(c.l, c.p) / 2 + 1.5) return true;
+  if (Math.abs(x - LAGHETTO.x) < LAGHETTO.l / 2 + 2 && Math.abs(z - LAGHETTO.z) < LAGHETTO.p / 2 + 2) return true;
+  if (x > MAIS.x0 - 1 && x < MAIS.x1 + 1 && z < MAIS.z0 + 1 && z > MAIS.z1 - 1) return true;
+  if (x > -21 && x < -7 && z > -51 + OZ && z < -38 + OZ) return true; // frantoio
   return false;
 }
 
@@ -198,15 +192,17 @@ function Sparsi({ ridotto }: { ridotto: boolean }) {
     const caso = generatore(311);
     const ciuffi: THREE.Matrix4[] = [];
     const sassi: THREE.Matrix4[] = [];
-    const n = ridotto ? 700 : 1800;
+    const n = ridotto ? 800 : 2000;
     let tentativi = 0;
     while (ciuffi.length < n && tentativi++ < n * 6) {
-      const x = (caso() - 0.5) * 116, z = 32 - caso() * 112;
+      // metà nella fattoria, metà nell'area degli uliveti
+      const lontano = caso() < 0.5;
+      const x = (caso() - 0.5) * 116, z = lontano ? 32 - caso() * 112 + OZ : 30 - caso() * 110;
       if (vicinoAUnaTrazzera(x, z, 0.4) || occupato(x, z)) continue;
       ciuffi.push(posa(x, 0, z, caso() * 6.28, 0.6 + caso() * 0.9));
     }
-    for (let i = 0; i < 90; i++) {
-      const x = (caso() - 0.5) * 116, z = 32 - caso() * 112;
+    for (let i = 0; i < 140; i++) {
+      const x = (caso() - 0.5) * 116, z = caso() < 0.5 ? 32 - caso() * 112 + OZ : 30 - caso() * 110;
       if (vicinoAUnaTrazzera(x, z, 0.2) || occupato(x, z)) continue;
       const s = caso() < 0.15 ? 1.4 + caso() * 1.6 : 0.3 + caso() * 0.6;
       sassi.push(posa(x, -0.05, z, caso() * 6.28, [s, s * (0.6 + caso() * 0.5), s]));
@@ -259,6 +255,7 @@ export default function Terreno({ ridotto }: { ridotto: boolean }) {
       <Trazzere />
       <Muretti />
       <Colline />
+      <Colline centro={[ALTROVE[0], ALTROVE[2] - 40]} />
       <Sparsi ridotto={ridotto} />
     </group>
   );

@@ -6,6 +6,7 @@ import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { pillola } from "./base";
 import { Fotogrammi, H, L, RIGHE, Y0, type Posa } from "./pixel";
 import { PERSONAGGI, zona, type Azione, type Personaggio, type ZonaId } from "@/content/azienda";
+import { altrove } from "@/content/luoghi";
 
 /*
  * Andrea e i collaboratori. Andrea accompagna la visita: sta nella zona in cui si trova il visitatore,
@@ -164,7 +165,7 @@ export default function Persone({
           <Figura
             key={p.id}
             p={p}
-            pos={i === 0 ? [3.4, 0, -38.2] : [-0.6, 0, -36.8]}
+            pos={altrove(i === 0 ? [3.4, 0, -38.2] : [-0.6, 0, -36.8])}
             verso={i === 0 ? 2.2 : -0.8}
             azione="abbacchia"
             parla={false}

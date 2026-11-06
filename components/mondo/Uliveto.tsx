@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { albero, generatore, modello, posa, smorza, textura } from "./base";
 import { occupato, vicinoAUnaTrazzera } from "./Terreno";
+import { ALTROVE } from "@/content/luoghi";
 
 /*
  * L'uliveto dietro il casale, oltre il muretto a z = −26: ulivi a sesto largo, un po' irregolari.
@@ -23,7 +24,7 @@ export function usaUlivi() {
     for (let z = -32; z > -78; z -= 7)
       for (let x = -52; x < 54; x += 7.2) {
         const px = x + (caso() - 0.5) * 2.4, pz = z + (caso() - 0.5) * 2.4;
-        if (vicinoAUnaTrazzera(px, pz, 1.6) || occupato(px, pz)) continue;
+        if (vicinoAUnaTrazzera(px, pz + ALTROVE[2], 1.6) || occupato(px, pz + ALTROVE[2])) continue;
         if (px > -24 && px < -4 && pz > -54 && pz < -35) continue; // lo spiazzo del frantoio
         const s = 1.55 + caso() * 0.55, ry = caso() * 6.28;
         alberi.push({ x: px, z: pz, ry, s, m: posa(px, 0, pz, ry, [s * 1.05, s, s * 1.05]) });

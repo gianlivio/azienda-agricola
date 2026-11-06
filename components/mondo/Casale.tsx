@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { albero, generatore, modello, posa, scatola, scritta, smorza, textura } from "./base";
 import { AZIENDA } from "@/content/azienda";
+import { ALBERI_FATTORIA, CANCELLO_Z, CASETTE, LAGHETTO, SPIAZZALE } from "@/content/luoghi";
 
 /*
  * Il casale in pietra a vista con i coppi, l'annesso del magazzino, il cancello con la targa,
@@ -135,63 +136,109 @@ function Portale({ x, y = 0, z, l = 2.0, a = 2.5, ruota = 0 }: { x: number; y?: 
   );
 }
 
-function Edificio() {
+/** Una casetta di campagna: muri di pietra o d'intonaco, tetto a capanna di coppi, porta e finestra verso lo spiazzale. */
+function Casetta({ x, z, l, p, h, tipo }: { x: number; z: number; l: number; p: number; h: number; tipo: "pietra" | "intonaco" }) {
   const pietra = usaPietra(1);
-  // casale: 16 × 7 × 8, fronte a z = −10
-  const muri = useMemo(() => scatola(16, 7, 8, 2.2), []);
-  const annesso = useMemo(() => scatola(8, 4.2, 7, 2.2), []);
+  const intonaco = useMemo(() => new THREE.MeshLambertMaterial({ color: "#EDE6D8" }), []);
+  const muri = useMemo(() => scatola(l, h, p, 2.2), [l, h, p]);
+  const verso = Math.atan2(SPIAZZALE.x - x, SPIAZZALE.z - z);
+  const muro = tipo === "pietra" ? pietra : intonaco;
+  return (
+    <group position={[x, 0, z]} rotation-y={verso}>
+      <mesh geometry={muri} material={muro} position={[0, h / 2, 0]} castShadow receiveShadow />
+      <group rotation-y={Math.PI / 2}>
+        <Tetto l={p} p={l} alto={h} salita={tipo === "pietra" ? 1.3 : 1.0} sporto={0.35} pietra={muro} />
+      </group>
+      {/* zoccolo */}
+      <mesh position={[0, 0.2, p / 2 + 0.02]}>
+        <boxGeometry args={[l + 0.04, 0.4, 0.06]} />
+        <meshLambertMaterial color={tipo === "pietra" ? "#B8A88E" : "#C9BFAE"} />
+      </mesh>
+      <Portale x={-l * 0.18} z={p / 2} l={1.1} a={1.95} />
+      <Finestra x={l * 0.26} y={1.55} z={p / 2} l={0.8} a={0.95} scuri={tipo === "pietra" ? "#56675A" : "#4E6A7A"} />
+    </group>
+  );
+}
+
+/** Il casotto bianco accanto al laghetto, con il serbatoio dell'acqua. */
+function Casotto() {
+  return (
+    <group position={[-7.2, 0, 3.2]} rotation-y={0.25}>
+      <mesh position={[0, 1.1, 0]} castShadow receiveShadow>
+        <boxGeometry args={[2.6, 2.2, 2.1]} />
+        <meshLambertMaterial color="#F1EEE6" />
+      </mesh>
+      <mesh position={[0, 2.25, 0]} castShadow>
+        <boxGeometry args={[2.9, 0.1, 2.4]} />
+        <meshLambertMaterial color="#B9BDB8" />
+      </mesh>
+      <mesh position={[0.4, 0.95, 1.06]}>
+        <boxGeometry args={[0.9, 1.9, 0.04]} />
+        <meshLambertMaterial color="#6E7F86" />
+      </mesh>
+      <mesh position={[-2.2, 1.0, -0.2]} castShadow>
+        <cylinderGeometry args={[0.75, 0.75, 2.0, 20]} />
+        <meshLambertMaterial color="#2D4E7A" />
+      </mesh>
+    </group>
+  );
+}
+
+/** Il laghetto: una vasca d'irrigazione col telo scuro, gli argini di terra, qualche canna. */
+function Laghetto() {
+  const { x, z, l, p, r } = LAGHETTO;
+  const canne = useMemo(() => {
+    const caso = generatore(404);
+    return Array.from({ length: 26 }, () => {
+      const lato = Math.floor(caso() * 4);
+      const u = caso() - 0.5;
+      const px = lato < 2 ? u * l : (lato === 2 ? -1 : 1) * (l / 2 + 0.3);
+      const pz = lato < 2 ? (lato === 0 ? -1 : 1) * (p / 2 + 0.3) : u * p;
+      return { px, pz, h: 0.8 + caso() * 0.9, r: caso() * 0.3 };
+    });
+  }, [l, p]);
+  return (
+    <group position={[x, 0, z]} rotation-y={r}>
+      {/* gli argini */}
+      {[
+        [0, -p / 2 - 0.5, l + 2, 1],
+        [0, p / 2 + 0.5, l + 2, 1],
+        [-l / 2 - 0.5, 0, 1, p],
+        [l / 2 + 0.5, 0, 1, p],
+      ].map(([ax, az, al, ap], i) => (
+        <mesh key={i} position={[ax, 0.25, az]} castShadow receiveShadow>
+          <boxGeometry args={[al, 0.5, ap]} />
+          <meshLambertMaterial color="#8E6A4E" />
+        </mesh>
+      ))}
+      {/* il telo scuro */}
+      <mesh position={[0, 0.12, 0]}>
+        <boxGeometry args={[l, 0.3, p]} />
+        <meshLambertMaterial color="#2A2C2E" />
+      </mesh>
+      {/* l'acqua */}
+      <mesh position={[0, 0.3, 0]} rotation-x={-Math.PI / 2} receiveShadow>
+        <planeGeometry args={[l - 0.5, p - 0.5]} />
+        <meshStandardMaterial color="#3E5A52" roughness={0.08} metalness={0.35} />
+      </mesh>
+      {canne.map((c, i) => (
+        <mesh key={i} position={[c.px, c.h / 2 + 0.4, c.pz]} rotation-z={c.r - 0.15}>
+          <coneGeometry args={[0.05, c.h, 4]} />
+          <meshLambertMaterial color={i % 3 ? "#7E8F4A" : "#A39A5E"} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+function Edificio() {
   return (
     <group>
-      <group position={[0, 0, -14]}>
-        <mesh geometry={muri} material={pietra} position={[0, 3.5, 0]} castShadow receiveShadow />
-        <Tetto l={16} p={8} alto={7} salita={2.2} pietra={pietra} />
-        {/* cornicione */}
-        <mesh position={[0, 6.95, 4.05]} castShadow>
-          <boxGeometry args={[16.3, 0.22, 0.3]} />
-          <meshLambertMaterial color="#E9DCC2" />
-        </mesh>
-        <mesh position={[0, 6.95, -4.05]} castShadow>
-          <boxGeometry args={[16.3, 0.22, 0.3]} />
-          <meshLambertMaterial color="#E9DCC2" />
-        </mesh>
-        <Portale x={0} z={4} />
-        {[-5.6, -2.9, 2.9, 5.6].map((x) => (
-          <Finestra key={x} x={x} y={1.75} z={4} l={0.9} a={1.2} />
-        ))}
-        {[-5.6, -2.4, 2.4, 5.6].map((x) => (
-          <Finestra key={x} x={x} y={4.9} z={4} />
-        ))}
-        {/* il balcone al centro, con la ringhiera in ferro */}
-        <Finestra x={0} y={5.0} z={4} l={1.1} a={1.9} />
-        <mesh position={[0, 3.95, 4.45]} castShadow>
-          <boxGeometry args={[2.2, 0.14, 0.9]} />
-          <meshLambertMaterial color="#E9DCC2" />
-        </mesh>
-        {Array.from({ length: 12 }, (_, i) => (
-          <mesh key={i} position={[-1.05 + i * 0.19, 4.4, 4.85]}>
-            <boxGeometry args={[0.025, 0.8, 0.025]} />
-            <meshLambertMaterial color="#1E1C1A" />
-          </mesh>
-        ))}
-        <mesh position={[0, 4.8, 4.85]}>
-          <boxGeometry args={[2.2, 0.05, 0.05]} />
-          <meshLambertMaterial color="#1E1C1A" />
-        </mesh>
-        {/* finestre di lato */}
-        <Finestra x={8} y={4.9} z={0} ruota={Math.PI / 2} />
-        <Finestra x={8} y={1.8} z={-1.8} ruota={Math.PI / 2} l={0.9} a={1.2} />
-        {/* comignolo */}
-        <mesh position={[4.5, 8.6, -1]} material={pietra} castShadow>
-          <boxGeometry args={[0.8, 1.8, 0.8]} />
-        </mesh>
-      </group>
-      {/* annesso: il magazzino, più basso, a ovest */}
-      <group position={[-12, 0, -14]}>
-        <mesh geometry={annesso} material={pietra} position={[0, 2.1, 0]} castShadow receiveShadow />
-        <Tetto l={8} p={7} alto={4.2} salita={1.5} pietra={pietra} />
-        <Portale x={0} z={3.5} l={3} a={2.6} />
-        <Finestra x={-2.8} y={2.2} z={3.5} l={0.7} a={0.8} />
-      </group>
+      {CASETTE.map((c, i) => (
+        <Casetta key={i} {...c} />
+      ))}
+      <Casotto />
+      <Laghetto />
     </group>
   );
 }
@@ -207,7 +254,7 @@ function Anta({ verso, aperto }: { verso: 1 | -1; aperto: boolean }) {
   const ferro = useMemo(() => new THREE.MeshLambertMaterial({ color: "#23211F" }), []);
   const L = 2.0;
   return (
-    <group ref={g} position={[verso * -2.0, 0, 34]}>
+    <group ref={g} position={[verso * -2.0, 0, CANCELLO_Z]}>
       <group position={[verso * (L / 2), 0, 0]}>
         {[0.2, 1.1, 2.0].map((y) => (
           <mesh key={y} material={ferro} position={[0, y, 0]}>
@@ -255,7 +302,7 @@ function Cancello({ aperto }: { aperto: boolean }) {
   return (
     <group>
       {[-1, 1].map((s) => (
-        <group key={s} position={[s * 2.45, 0, 34]}>
+        <group key={s} position={[s * 2.45, 0, CANCELLO_Z]}>
           <mesh material={pietra} position={[0, 1.5, 0]} castShadow receiveShadow>
             <boxGeometry args={[0.9, 3.0, 0.9]} />
           </mesh>
@@ -272,11 +319,11 @@ function Cancello({ aperto }: { aperto: boolean }) {
       <Anta verso={1} aperto={aperto} />
       <Anta verso={-1} aperto={aperto} />
       {/* la targa sul muretto a destra del cancello, verso chi arriva */}
-      <mesh position={[5.6, 0.62, 34.32]}>
+      <mesh position={[5.6, 0.62, CANCELLO_Z + 0.32]}>
         <planeGeometry args={[4.2, 0.58]} />
         <meshLambertMaterial map={targa} />
       </mesh>
-      <mesh position={[-4.4, 0.62, 34.32]}>
+      <mesh position={[-5.4, 0.62, CANCELLO_Z + 0.32]}>
         <planeGeometry args={[1.6, 0.38]} />
         <meshLambertMaterial map={comune} />
       </mesh>
@@ -286,16 +333,7 @@ function Cancello({ aperto }: { aperto: boolean }) {
 
 /* ------------------------------------------------------------------ carrubi e cose dello spiazzo */
 
-const CARRUBI: [number, number, number, number][] = [
-  // x, z, grandezza, seme
-  [10.5, 8, 1.25, 11],
-  [-11, 11, 1.1, 23],
-  [-26, 22, 1.4, 37],
-  [30, 24, 1.3, 41],
-  [42, -21, 1.2, 53],
-  [-44, -16, 1.35, 67],
-  [-8, 26, 0.9, 71],
-];
+const CARRUBI = ALBERI_FATTORIA.map(([x, z, g], i) => [x, z, g, 11 + i * 13] as [number, number, number, number]);
 
 export function Carrubi() {
   const forma = useMemo(() => {
@@ -353,17 +391,17 @@ function Cose() {
   const pile = useMemo(() => {
     const m: THREE.Matrix4[] = [];
     // due pile di cassette accanto al portone
-    for (let k = 0; k < 4; k++) m.push(posa(5.2, k * 0.3, -9.2, 0.05 * k, 1));
-    for (let k = 0; k < 3; k++) m.push(posa(5.9, k * 0.3, -8.8, 0.3 + 0.04 * k, 1));
-    m.push(posa(5.5, 0, -8.1, 1.2, 1));
+    for (let k = 0; k < 4; k++) m.push(posa(7.4, k * 0.3, -12.6, 0.05 * k, 1));
+    for (let k = 0; k < 3; k++) m.push(posa(8.1, k * 0.3, -12.2, 0.3 + 0.04 * k, 1));
+    m.push(posa(7.7, 0, -11.5, 1.2, 1));
     return m;
   }, []);
   return (
     <group>
       {botte && (
         <>
-          <mesh geometry={botte.geometria} material={botte.materiale} position={[-5.3, 0, -9.3]} castShadow />
-          <mesh geometry={botte.geometria} material={botte.materiale} position={[-6.5, 0, -9.1]} rotation-y={0.7} castShadow />
+          <mesh geometry={botte.geometria} material={botte.materiale} position={[2.6, 0, -4.4]} castShadow />
+          <mesh geometry={botte.geometria} material={botte.materiale} position={[2.9, 0, -5.7]} rotation-y={0.7} castShadow />
         </>
       )}
       {cassetta && (
@@ -378,16 +416,6 @@ function Cose() {
           frustumCulled={false}
         />
       )}
-      {/* l'abbeveratoio di pietra */}
-      <group position={[-8.6, 0, -3]} rotation-y={0.3}>
-        <mesh material={pietra} position={[0, 0.4, 0]} castShadow receiveShadow>
-          <boxGeometry args={[2.6, 0.8, 1]} />
-        </mesh>
-        <mesh position={[0, 0.76, 0]}>
-          <boxGeometry args={[2.3, 0.05, 0.7]} />
-          <meshLambertMaterial color="#5E7A78" />
-        </mesh>
-      </group>
     </group>
   );
 }

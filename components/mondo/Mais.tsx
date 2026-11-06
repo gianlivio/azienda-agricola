@@ -11,7 +11,8 @@ import { generatore, smorza } from "./base";
  * Fasi (0–5): semina, emergenza, crescita, fioritura, maturazione, raccolta.
  */
 
-const XA = 18.5, XB = 44, ZA = -12.6, ZB = 12.6;
+/* coordinate locali del campo: x lungo i filari (0–46), z attraverso (−8…8); la scena lo gira e lo sposta */
+const XA = 0, XB = 46, ZA = -8, ZB = 8;
 const FRA_FILE = 0.75, SULLA_FILA = 0.46;
 
 /** Altezza (y) e larghezza della pianta per fase. */
@@ -274,12 +275,12 @@ function TrattoreInCampo({ fase }: { fase: number }) {
       const giro = (t.current * 1.6) % ((XB - XA) * 2);
       const andata = giro < XB - XA;
       const x = andata ? XA + giro : XB - (giro - (XB - XA));
-      const z = -2.2 + Math.floor((t.current * 1.6) / ((XB - XA) * 2)) % 4 * 3;
+      const z = -5.6 + (Math.floor((t.current * 1.6) / ((XB - XA) * 2)) % 4) * 3.75;
       g.current.position.set(x, 0, z);
       g.current.rotation.y = andata ? 0 : Math.PI;
     } else if (fase === 5) {
-      g.current.position.set(27, 0, -6.6);
-      g.current.rotation.y = 0.25;
+      g.current.position.set(10, 0, -10.6);
+      g.current.rotation.y = 0;
     }
   });
   return (

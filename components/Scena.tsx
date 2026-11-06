@@ -13,6 +13,8 @@ import Uliveto from "./mondo/Uliveto";
 import Frantoio from "./mondo/Frantoio";
 import Persone from "./mondo/Persone";
 import Oggetti from "./mondo/Oggetti";
+import Furgone from "./mondo/Furgone";
+import { ALTROVE, FURGONE_FATTORIA, altrove } from "@/content/luoghi";
 
 export type Modo = "guida" | "cammina";
 export type Movimento = { x: number; y: number };
@@ -31,7 +33,13 @@ type Props = {
   onParla: (id: string) => void;
   onPronta: () => void;
   onMosso: () => void;
+  /** il velo nero del viaggio in furgone, con la scritta */
+  schermo: React.RefObject<HTMLDivElement | null>;
 };
+
+/** In quale area sta un punto: la fattoria o l'area lontana degli uliveti. */
+const lontano = (z: number) => z < ALTROVE[2] / 2;
+const ZONE_LONTANE: ZonaId[] = ["uliveto", "frantoio"];
 
 /** Il sole basso del tramonto, dalla stessa parte del sole del cielo (a +x, +z). */
 const SOLE = new THREE.Vector3(0.81, 0.36, 0.59).normalize();
@@ -80,6 +88,16 @@ function Luci({ ombre }: { ombre: boolean }) {
     };
   }, [scene]);
   const p = SOLE.clone().multiplyScalar(120).add(new THREE.Vector3(0, 0, -20));
+  // le ombre seguono l'area in cui si è: la fattoria o gli uliveti lontani
+  useFrame(({ camera }) => {
+    const l = sole.current;
+    if (!l) return;
+    const cz = lontano(camera.position.z) ? ALTROVE[2] - 45 : -20;
+    if (l.target.position.z !== cz) {
+      l.target.position.set(0, 0, cz);
+      l.position.copy(SOLE).multiplyScalar(120).add(l.target.position);
+    }
+  });
   return (
     <>
       <hemisphereLight args={["#D2DCE8", "#8A6A52", 1.6]} />
@@ -106,15 +124,35 @@ const angolo = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
 
 /** I centri delle aree, per sapere dove si trova chi cammina. */
 const AREE: [ZonaId, number, number][] = [
-  ["cancello", 0, 40],
-  ["spiazzo", 0, 4],
-  ["serra", -31, 0],
-  ["mais", 30, 0],
-  ["uliveto", 6, -50],
-  ["frantoio", -14, -43],
+  ["cancello", 0, 14],
+  ["spiazzo", 1, 0],
+  ["serra", -15.5, -22.7],
+  ["mais", 30, -25],
+  ["uliveto", 6, -50 + ALTROVE[2]],
+  ["frantoio", -14, -43 + ALTROVE[2]],
 ];
 
-function Regia({ modo, zonaId, movimento, onVicina, onMosso, stretto }: Pick<Props, "modo" | "zonaId" | "movimento" | "onVicina" | "onMosso" | "stretto">) {
+/** Le strade del furgone: in partenza dalla fattoria, in arrivo all'uliveto, e viceversa. */
+const V = (x: number, z: number) => new THREE.Vector3(x, 0, z);
+const VA = (x: number, z: number) => new THREE.Vector3(...altrove([x, 0, z]));
+const STRADE = {
+  esceFattoria: [V(1.6, 5.7), V(0, 7.6), V(3, 9.6), V(14, 8.4), V(34, 7), V(62, 6.5)],
+  entraFattoria: [V(62, 6.5), V(34, 7), V(14, 8.4), V(3, 9.6), V(0, 7.6), V(1.5, 5.6), V(FURGONE_FATTORIA.p[0], FURGONE_FATTORIA.p[2])],
+  esceUliveto: [VA(12, -22), VA(8, -19), VA(10, -8), VA(13.6, 6), VA(14, 40), VA(14, 75)],
+  entraUliveto: [VA(14, 75), VA(14, 30), VA(14, 0), VA(14, -16)],
+};
+type Viaggio = { fase: "sale" | "parte" | "buio" | "arriva"; t: number; andata: THREE.CatmullRomCurve3; ritorno: THREE.CatmullRomCurve3; verso: "uliveto" | "fattoria" };
+
+function Regia({
+  modo,
+  zonaId,
+  movimento,
+  onVicina,
+  onMosso,
+  stretto,
+  furgone,
+  schermo,
+}: Pick<Props, "modo" | "zonaId" | "movimento" | "onVicina" | "onMosso" | "stretto" | "schermo"> & { furgone: React.RefObject<THREE.Group | null> }) {
   const { camera, gl } = useThree();
   const st = useRef({
     yaw: 0,
@@ -127,7 +165,45 @@ function Regia({ modo, zonaId, movimento, onVicina, onMosso, stretto }: Pick<Pro
     puntatore: -1,
     ultimo: { x: 0, y: 0 },
     tasti: new Set<string>(),
+    viaggio: null as Viaggio | null,
+    zona: zonaId,
   });
+  st.current.zona = zonaId;
+  const subito = typeof location !== "undefined" && location.search.includes("subito");
+
+  /** Prepara il volo della camera verso un punto, guardando un altro. */
+  const vola = (a: THREE.Vector3, guarda: THREE.Vector3, durata?: number) => {
+    const s = st.current;
+    const da = camera.position.clone();
+    const fine = verso(a, guarda);
+    const d = da.distanceTo(a);
+    const ctrl = da.clone().add(a).multiplyScalar(0.5);
+    ctrl.y += Math.min(d * 0.32, 26);
+    const yawAttuale = s.yaw + s.offYaw, pitchAttuale = s.pitch + s.offPitch;
+    s.offYaw = 0;
+    s.offPitch = 0;
+    s.volo = {
+      da,
+      a,
+      ctrl,
+      daYaw: yawAttuale,
+      aYaw: yawAttuale + angolo(fine.yaw - yawAttuale),
+      daPitch: pitchAttuale,
+      aPitch: fine.pitch,
+      t: 0,
+      // ?subito: niente volo (serve alle prove automatiche)
+      durata: subito ? 0.001 : (durata ?? THREE.MathUtils.clamp(d / 14, 1.4, 3.6)),
+    };
+  };
+  /** Dietro il furgone, come in un gioco di guida. */
+  const dietroAlFurgone = () => {
+    const f = furgone.current as THREE.Group;
+    const avanti = new THREE.Vector3(-Math.sin(f.rotation.y), 0, -Math.cos(f.rotation.y));
+    return {
+      pos: f.position.clone().addScaledVector(avanti, -8).add(new THREE.Vector3(0, 3.2, 0)),
+      guarda: f.position.clone().addScaledVector(avanti, 5).add(new THREE.Vector3(0, 1.2, 0)),
+    };
+  };
 
   // posizione iniziale: davanti al cancello
   useEffect(() => {
@@ -151,34 +227,35 @@ function Regia({ modo, zonaId, movimento, onVicina, onMosso, stretto }: Pick<Pro
     }
   }, [camera]);
 
-  // il volo verso la zona scelta
+  // il volo verso la zona scelta; se la zona sta nell'altra area, prima il viaggio in furgone
   useEffect(() => {
     if (modo !== "guida") return;
     const s = st.current;
+    if (s.viaggio) return; // a viaggio finito si va comunque alla zona scelta per ultima
     const z = zona(zonaId);
-    const da = camera.position.clone();
+    const vaLontano = ZONE_LONTANE.includes(zonaId);
+    if (vaLontano !== lontano(camera.position.z) && furgone.current) {
+      const daFattoria = !vaLontano;
+      s.viaggio = {
+        fase: "sale",
+        t: 0,
+        verso: vaLontano ? "uliveto" : "fattoria",
+        andata: new THREE.CatmullRomCurve3([furgone.current.position.clone(), ...(daFattoria ? STRADE.esceUliveto : STRADE.esceFattoria)]),
+        ritorno: new THREE.CatmullRomCurve3(daFattoria ? STRADE.entraFattoria : STRADE.entraUliveto),
+      };
+      const d = dietroAlFurgone();
+      vola(d.pos, d.guarda, 1.8);
+      if (schermo.current) {
+        const p = schermo.current.querySelector("p");
+        if (p) p.textContent = vaLontano ? "In viaggio verso gli uliveti…" : "Si torna in azienda…";
+      }
+      return;
+    }
     const a = new THREE.Vector3(...z.camera);
     const fine = verso(a, new THREE.Vector3(...z.guarda));
-    const d = da.distanceTo(a);
-    if (d < 0.05 && Math.abs(angolo(fine.yaw - s.yaw)) < 0.01) return;
-    const ctrl = da.clone().add(a).multiplyScalar(0.5);
-    ctrl.y += Math.min(d * 0.32, 26);
-    const yawAttuale = s.yaw + s.offYaw, pitchAttuale = s.pitch + s.offPitch;
-    s.offYaw = 0;
-    s.offPitch = 0;
-    s.volo = {
-      da,
-      a,
-      ctrl,
-      daYaw: yawAttuale,
-      aYaw: yawAttuale + angolo(fine.yaw - yawAttuale),
-      daPitch: pitchAttuale,
-      aPitch: fine.pitch,
-      t: 0,
-      // ?subito: niente volo (serve alle prove automatiche)
-      durata: location.search.includes("subito") ? 0.001 : THREE.MathUtils.clamp(d / 14, 1.4, 3.6),
-    };
-  }, [modo, zonaId, camera]);
+    if (a.distanceTo(camera.position) < 0.05 && Math.abs(angolo(fine.yaw - s.yaw)) < 0.01) return;
+    vola(a, new THREE.Vector3(...z.guarda));
+  }, [modo, zonaId, camera]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // passando alla camminata si parte da dove si guarda, a terra
   useEffect(() => {
@@ -252,6 +329,59 @@ function Regia({ modo, zonaId, movimento, onVicina, onMosso, stretto }: Pick<Pro
   useFrame((_, dtGrezzo) => {
     const dt = Math.min(dtGrezzo, 0.1);
     const s = st.current;
+    const f = furgone.current;
+    if (s.viaggio && !s.volo && f) {
+      const v = s.viaggio;
+      v.t += subito ? 10 : dt;
+      const velo = (o: number) => {
+        if (schermo.current) schermo.current.style.opacity = String(THREE.MathUtils.clamp(o, 0, 1));
+      };
+      const sullaStrada = (curva: THREE.CatmullRomCurve3, u: number) => {
+        const p = curva.getPointAt(THREE.MathUtils.clamp(u, 0, 1));
+        const tg = curva.getTangentAt(THREE.MathUtils.clamp(u, 0, 1));
+        f.position.copy(p);
+        f.rotation.y = Math.atan2(-tg.x, -tg.z);
+        // la camera insegue il furgone, morbida
+        const d = dietroAlFurgone();
+        if (v.fase === "arriva" && v.t < dt * 1.5) camera.position.copy(d.pos);
+        camera.position.lerp(d.pos, 1 - Math.exp(-5 * dt));
+        const g = verso(camera.position, d.guarda);
+        s.yaw = s.yaw + angolo(g.yaw - s.yaw) * (1 - Math.exp(-6 * dt));
+        s.pitch = THREE.MathUtils.lerp(s.pitch, g.pitch, 1 - Math.exp(-6 * dt));
+      };
+      if (v.fase === "sale") {
+        v.fase = "parte";
+        v.t = 0;
+      } else if (v.fase === "parte") {
+        const D = 3.6;
+        sullaStrada(v.andata, Math.pow(Math.min(v.t / D, 1), 1.7));
+        velo((v.t - 2.5) / 0.9);
+        if (v.t >= D) {
+          v.fase = "buio";
+          v.t = 0;
+          velo(1);
+        }
+      } else if (v.fase === "buio") {
+        if (v.t >= 1.1) {
+          v.fase = "arriva";
+          v.t = 0;
+          sullaStrada(v.ritorno, 0);
+          camera.position.copy(dietroAlFurgone().pos);
+        }
+      } else {
+        const D = 3.4;
+        sullaStrada(v.ritorno, 1 - Math.pow(1 - Math.min(v.t / D, 1), 1.8));
+        velo(1 - v.t / 0.9);
+        if (v.t >= D) {
+          velo(0);
+          s.viaggio = null;
+          const z = zona(s.zona);
+          vola(new THREE.Vector3(...z.camera), new THREE.Vector3(...z.guarda), 2.2);
+        }
+      }
+      camera.rotation.set(s.pitch, s.yaw, 0, "YXZ");
+      return;
+    }
     if (s.volo) {
       const v = s.volo;
       v.t = Math.min(1, v.t + dt / v.durata);
@@ -287,19 +417,11 @@ function Regia({ modo, zonaId, movimento, onVicina, onMosso, stretto }: Pick<Pro
         const p = camera.position;
         p.x += (fx * av + -fz * la) * vel;
         p.z += (fz * av + fx * la) * vel;
-        p.x = THREE.MathUtils.clamp(p.x, -58, 58);
-        p.z = THREE.MathUtils.clamp(p.z, -80, 52);
-        // il casale non si attraversa
-        if (p.x > -16.4 && p.x < 8.4 && p.z > -18.4 && p.z < -9.6) {
-          const uscite = [p.x + 16.4, 8.4 - p.x, p.z + 18.4, -9.6 - p.z];
-          const i = uscite.indexOf(Math.min(...uscite));
-          if (i === 0) p.x = -16.4;
-          else if (i === 1) p.x = 8.4;
-          else if (i === 2) p.z = -18.4;
-          else p.z = -9.6;
-        }
+        const base = lontano(p.z) ? ALTROVE[2] : 0;
+        p.x = THREE.MathUtils.clamp(p.x, -60, 60);
+        p.z = THREE.MathUtils.clamp(p.z, base - 84, base + 60);
         // il muretto davanti, tranne il cancello
-        if (Math.abs(p.z - 34) < 0.5 && Math.abs(p.x) > 1.9) p.z = p.z > 34 ? 34.5 : 33.5;
+        if (!lontano(p.z) && Math.abs(p.z - 6) < 0.5 && Math.abs(p.x) > 1.9 && Math.abs(p.x) < 9.2) p.z = p.z > 6 ? 6.5 : 5.5;
       }
       camera.position.y = THREE.MathUtils.lerp(camera.position.y, OCCHI, 1 - Math.exp(-4 * dt));
       // in che zona si è
@@ -343,7 +465,8 @@ function Segnaposto({ id, attivo, onVai }: { id: ZonaId; attivo: boolean; onVai:
       sprite.current.scale.set(h * pill.rapporto, h, 1);
       sprite.current.position.y = z.segno[1] + Math.sin(t * 1.4 + z.segno[0]) * 0.12;
       const m = sprite.current.material as THREE.SpriteMaterial;
-      m.opacity = THREE.MathUtils.lerp(m.opacity, attivo ? 0 : 1, 0.08);
+      const altraArea = ZONE_LONTANE.includes(id) !== lontano(camera.position.z);
+      m.opacity = THREE.MathUtils.lerp(m.opacity, attivo || altraArea ? 0 : 1, 0.08);
       sprite.current.visible = m.opacity > 0.03;
     }
   });
@@ -368,7 +491,7 @@ function Segnaposto({ id, attivo, onVai }: { id: ZonaId; attivo: boolean; onVai:
       >
         <spriteMaterial map={pill.texture} transparent depthTest={false} depthWrite={false} />
       </sprite>
-      {!attivo && (
+      {!attivo && ZONE_LONTANE.includes(id) === lontano(camera.position.z) && (
         <mesh ref={anello} position={[z.segno[0], 0.08, z.segno[2]]} rotation-x={-Math.PI / 2}>
           <ringGeometry args={[0.8, 0.95, 40]} />
           <meshBasicMaterial color="#D9C26A" transparent depthWrite={false} />
@@ -389,6 +512,12 @@ function Pronta({ onPronta }: { onPronta: () => void }) {
 
 export default function Scena(props: Props) {
   const ombre = !props.stretto;
+  const furgone = useRef<THREE.Group>(null);
+  // il furgone parcheggiato nello spiazzale, col muso verso il cancello (valori fissi: r3f non li riapplica)
+  const parcheggio = useMemo(
+    () => ({ p: FURGONE_FATTORIA.p, r: Math.atan2(-(0 - FURGONE_FATTORIA.p[0]), -(7.5 - FURGONE_FATTORIA.p[2])) }),
+    []
+  );
   return (
     <Canvas
       className="tela"
@@ -406,13 +535,18 @@ export default function Scena(props: Props) {
         onVicina={props.onVicina}
         onMosso={props.onMosso}
         stretto={props.stretto}
+        furgone={furgone}
+        schermo={props.schermo}
       />
       <Terreno ridotto={props.stretto} />
       <Casale cancelloAperto={props.cancelloAperto} />
       <Serra fase={props.fasi.serra} />
       <Mais fase={props.fasi.mais} />
-      <Uliveto fase={props.fasi.uliveto} />
-      <Frantoio fase={props.fasi.frantoio} />
+      <group position={ALTROVE}>
+        <Uliveto fase={props.fasi.uliveto} />
+        <Frantoio fase={props.fasi.frantoio} />
+      </group>
+      <Furgone ref={furgone} position={parcheggio.p} rotation={[0, parcheggio.r, 0]} />
       <Oggetti fasi={props.fasi} />
       <Persone zonaAndrea={props.zonaId} faseUliveto={props.fasi.uliveto} parlante={props.parlante} onParla={props.onParla} />
       {ZONE.map((z) => (

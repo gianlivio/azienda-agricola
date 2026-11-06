@@ -4,6 +4,8 @@
  * senza dati specifici dell'azienda che non ci sono stati forniti.
  */
 
+import { CANCELLO_Z, altrove, inSerra } from "./luoghi";
+
 /** Messaggio di auguri all'apertura. Per toglierlo: false. */
 export const AUGURI = true;
 
@@ -39,34 +41,35 @@ export const ZONE: Zona[] = [
     occhiello: "Ingresso",
     titolo: "Benvenuti",
     testo:
-      "Oltre il cancello: lo spiazzo, il casale in pietra, i carrubi. A sinistra le serre dei mirtilli, a destra il mais, dietro il casale l'uliveto e il frantoio.",
-    camera: [0, 1.7, 46],
-    guarda: [0, 2.2, 28],
-    segno: [0, 3.6, 33],
-    andrea: [2.6, 0, 37.5],
+      "Dalla trazzera si entra nello spiazzale: le due casette sulla destra, di fronte il capannone dei frutti di bosco, a sinistra il laghetto, in fondo a destra il campo di mais. Gli uliveti e il frantoio sono altrove: ci si va col furgone.",
+    camera: [0, 1.7, 17],
+    guarda: [0, 2.2, -14],
+    segno: [0, 3.8, CANCELLO_Z],
+    andrea: [2.8, 0, 9.2],
   },
   {
     id: "spiazzo",
-    nome: "Spiazzo",
+    nome: "Spiazzale",
     occhiello: "Il cuore dell'azienda",
-    titolo: "Lo spiazzo",
+    titolo: "Lo spiazzale",
     testo:
-      "Il casale è fatto di pietra calcarea iblea, a vista, con i coppi sul tetto. Qui si arriva, si scaricano le cassette, si decide la giornata. Andrea è qui: cliccalo per parlargli.",
-    camera: [0, 1.7, 13],
-    guarda: [0, 3, -10],
-    segno: [0, 3.2, 4],
-    andrea: [2.2, 0, 5.5],
+      "Qui si arriva, si scaricano le cassette, si decide la giornata. Sulla destra le due casette, di fronte il capannone, a sinistra il laghetto per l'irrigazione. Il furgone è qui: porta agli uliveti. Andrea è qui: cliccalo per parlargli.",
+    camera: [-1.5, 1.7, 4.5],
+    guarda: [-2, 2.6, -20],
+    segno: [1, 3.2, -1],
+    andrea: [1.8, 0, -1.2],
   },
   {
     id: "serra",
-    nome: "Serre dei mirtilli",
+    nome: "Frutti di bosco",
     occhiello: "Piccoli frutti fuori suolo",
-    titolo: "La serra dei mirtilli",
-    testo: "Mirtilli in vaso, su substrato, con la fertirrigazione: la specialità di Andrea.",
-    camera: [-21.6, 1.7, 0.4],
-    guarda: [-40, 1.2, -0.4],
-    segno: [-19.5, 5.6, 0],
-    andrea: [-26.8, 0, 1.4],
+    titolo: "Il capannone dei frutti di bosco",
+    testo:
+      "Mirtilli, more e lamponi, coltivati per l'azienda a cui vengono conferiti. Le fasi sono quelle del mirtillo, in vaso e in fertirrigazione: la specialità di Andrea.",
+    camera: inSerra(29, 1.7, 10.5),
+    guarda: inSerra(-30, 1.3, 10.5),
+    segno: inSerra(0, 7.4, 15.5),
+    andrea: inSerra(23.5, 0, 9.8),
     fasi: [
       {
         titolo: "Messa a dimora",
@@ -106,10 +109,10 @@ export const ZONE: Zona[] = [
     occhiello: "Pieno campo",
     titolo: "Il campo di mais",
     testo: "Dalla semina in primavera alla raccolta di fine estate.",
-    camera: [15.2, 1.8, -4],
-    guarda: [40, 1.4, 3],
-    segno: [17.5, 5, 0],
-    andrea: [18.0, 0, -5.2],
+    camera: [19.6, 1.9, 2.5],
+    guarda: [31, 1.2, -42],
+    segno: [26, 5, 0],
+    andrea: [22.8, 0, -3.4],
     fasi: [
       {
         titolo: "Semina",
@@ -146,10 +149,10 @@ export const ZONE: Zona[] = [
     occhiello: "Fra i muretti a secco",
     titolo: "L'uliveto",
     testo: "Ulivi fra i muretti a secco, come sui Monti Iblei.",
-    camera: [9.5, 1.7, -27],
-    guarda: [-6, 1.9, -56],
-    segno: [9, 4.6, -31],
-    andrea: [5.6, 0, -30.6],
+    camera: altrove([9.5, 1.7, -27]),
+    guarda: altrove([-6, 1.9, -56]),
+    segno: altrove([9, 4.6, -31]),
+    andrea: altrove([5.6, 0, -30.6]),
     fasi: [
       {
         titolo: "Fioritura",
@@ -178,10 +181,10 @@ export const ZONE: Zona[] = [
     occhiello: "Dall'oliva all'olio",
     titolo: "Il frantoio",
     testo: "La molitura, entro poche ore dalla raccolta.",
-    camera: [-14, 1.75, -36.2],
-    guarda: [-14, 1.2, -46],
-    segno: [-14, 5.6, -40],
-    andrea: [-16.4, 0, -39.4],
+    camera: altrove([-14, 1.75, -36.2]),
+    guarda: altrove([-14, 1.2, -46]),
+    segno: altrove([-14, 5.6, -40]),
+    andrea: altrove([-16.4, 0, -39.4]),
     fasi: [
       {
         titolo: "Lavaggio",
@@ -287,14 +290,19 @@ const andrea: Personaggio = {
         },
         {
           d: "Cosa c'è in azienda?",
-          r: "Le serre dei mirtilli, il campo di mais, l'uliveto fra i muretti a secco e il frantoio. Ogni zona ha le sue fasi: le puoi scorrere dal pannello a destra.",
+          r: "Qui il capannone dei frutti di bosco, con mirtilli, more e lamponi, e il campo di mais. Gli uliveti e il frantoio sono a qualche chilometro: ci andiamo col furgone. Ogni zona ha le sue fasi: le puoi scorrere dal pannello a destra.",
           vai: "spiazzo",
         },
       ],
     },
     spiazzo: {
-      saluto: "Questo è lo spiazzo: da qui si parte la mattina e qui si torna con le cassette. Chiedimi pure.",
+      saluto: "Questo è lo spiazzale: da qui si parte la mattina e qui si torna con le cassette. Chiedimi pure.",
       temi: [
+        {
+          d: "Andiamo agli uliveti?",
+          r: "Andiamo: gli uliveti sono lontani da qui, saliamo sul furgone.",
+          vai: "uliveto",
+        },
         {
           d: "Cos'è la fertirrigazione?",
           r: "Concimare attraverso l'acqua d'irrigazione. Ogni turno porta alla pianta acqua e nutrienti insieme, nella dose che serve in quel momento. Funziona solo se si misura: EC e pH di quello che entra e di quello che drena.",
@@ -358,6 +366,14 @@ const andrea: Personaggio = {
         },
       ],
       temi: [
+        {
+          d: "Per chi coltivate?",
+          r: "Per un'azienda a cui conferiamo la frutta: loro la selezionano, la confezionano e la vendono. Noi pensiamo a farla crescere bene e a raccoglierla al momento giusto.",
+        },
+        {
+          d: "E le more?",
+          r: "Le more stanno su spalliera, legate ai fili. I tralci nati quest'anno fruttificano l'anno dopo, poi si tagliano e si lascia spazio ai nuovi. In serra soffrono il caldo eccessivo: si ombreggia e si arieggia.",
+        },
         {
           d: "Perché mirtilli in Sicilia?",
           r: "Perché con le varietà giuste maturano presto, quando sul mercato ce ne sono pochi. Servono cultivar a basso fabbisogno di freddo: le nostre invernate non bastano a quelle del Nord Europa.",
@@ -497,7 +513,7 @@ const raccoglitrice: Personaggio = {
   ruolo: "Collaboratrice · raccolta",
   sotto: "Collaboratrice",
   zona: "serra",
-  pos: [-31, 0, -1.25],
+  pos: inSerra(8, 0, 9.8),
   verso: -Math.PI / 2,
   azione: "raccoglie",
   aspetto: {
@@ -532,7 +548,7 @@ const trattorista: Personaggio = {
   ruolo: "Collaboratore · trattorista",
   sotto: "Collaboratore",
   zona: "mais",
-  pos: [20.5, 0, -14.4],
+  pos: [23.6, 0, 1.2],
   verso: -2.4,
   azione: "fermo",
   aspetto: {
@@ -569,7 +585,7 @@ const raccoglitore: Personaggio = {
   ruolo: "Collaboratore · raccolta olive",
   sotto: "Collaboratore",
   zona: "uliveto",
-  pos: [-1.5, 0, -40.5],
+  pos: altrove([-1.5, 0, -40.5]),
   verso: 0.6,
   azione: "abbacchia",
   aspetto: {
@@ -603,7 +619,7 @@ const frantoiano: Personaggio = {
   ruolo: "Collaboratore · frantoiano",
   sotto: "Collaboratore",
   zona: "frantoio",
-  pos: [-13.0, 0, -44.3],
+  pos: altrove([-13.0, 0, -44.3]),
   verso: 0.7,
   azione: "lavora",
   aspetto: {
