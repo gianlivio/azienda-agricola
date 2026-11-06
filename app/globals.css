@@ -309,3 +309,39 @@ html:has(.senza-3d),html:has(.senza-3d) body{overflow:auto}
 @media (max-width:759px){.comandi-gioco{padding:1.1rem 1.1rem 1rem}.comandi-gioco h2{font-size:1.45rem}.riga{font-size:.85rem}.croce{grid-template-columns:repeat(3,1.8rem);grid-template-rows:repeat(2,1.8rem)}.tasto{min-width:1.8rem;height:1.8rem}}
 @media (prefers-reduced-motion:reduce){.croce .tasto,.stick i{animation:none}}
 .pannello--nascosto{display:none}
+
+/* ---------- schermi compatti (telefoni, tablet in verticale, schermi bassi): la scena prima di tutto ---------- */
+.interfaccia--compatta .guida{display:none}
+.interfaccia--compatta .pannello{
+  top:auto;bottom:4.3rem;right:.75rem;left:8rem;width:auto;max-width:30rem;margin-left:auto;transform:none;
+  padding:.6rem .9rem .65rem;max-height:46dvh;overflow:auto;animation:sale .45s var(--curva);
+}
+.interfaccia--compatta.pannello-aperto .pannello{left:.75rem;max-width:34rem}
+.interfaccia--compatta .pannello--chiuso{cursor:pointer}
+.interfaccia--compatta .pannello--chiuso .occhiello{font-size:.6rem}
+.interfaccia--compatta .pannello--chiuso .pannello-titolo{font-size:1.08rem;margin:.15rem 0 0}
+.interfaccia--compatta .pannello--chiuso .pannello-titolo::after{display:none}
+.interfaccia--compatta .pannello-maniglia{cursor:pointer}
+.interfaccia--compatta .pannello-segno{display:block;font-size:1.3rem;line-height:1}
+.interfaccia--compatta .pannello-titolo{font-size:1.4rem;margin:.35rem 0 .2rem}
+.interfaccia--compatta .pannello-titolo::after{width:1.8rem;margin-top:.5rem}
+.interfaccia--compatta .pannello-luogo{font-size:.62rem;margin:.1rem 0 .4rem}
+.interfaccia--compatta .pannello-testo{font-size:.98rem;line-height:1.42}
+.interfaccia--compatta .fasi{margin-top:.8rem}
+.interfaccia--compatta .parla-con{margin-top:.8rem}
+.interfaccia--compatta .parla{padding:.6rem 1rem}
+.interfaccia--compatta .dialogo{left:.75rem;right:.75rem;width:auto;max-width:34rem;bottom:4.3rem;max-height:56dvh;padding:1.05rem 1.1rem 1rem}
+.interfaccia--compatta .dialogo-nome{font-size:1.35rem}
+.interfaccia--compatta .dialogo-testo{font-size:1rem}
+.interfaccia--compatta .scelte button{font-size:.8rem;padding:.4rem .75rem}
+.interfaccia--compatta .zone{bottom:.8rem;left:.75rem;right:.75rem;transform:none;max-width:none}
+.interfaccia--compatta .joystick{top:auto;bottom:4.3rem;left:.8rem;width:6.4rem;height:6.4rem}
+/* con il pannello aperto o il dialogo, il joystick si fa da parte */
+.interfaccia--compatta.pannello-aperto .joystick,.interfaccia.con-dialogo .joystick{display:none}
+.interfaccia--compatta .ritratto{width:3rem;height:3rem}
+@media (max-height:520px){
+  .interfaccia--compatta .testata{padding:.6rem 1rem 1rem;flex-direction:row;align-items:center}
+  .interfaccia--compatta .firma-ruolo{display:none}
+  .interfaccia--compatta .pannello{max-height:60dvh}
+  .interfaccia--compatta .dialogo{max-height:64dvh}
+}

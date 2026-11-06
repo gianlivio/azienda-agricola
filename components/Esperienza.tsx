@@ -10,7 +10,10 @@ import type { Modo, Movimento } from "./Scena";
 
 const Scena = dynamic(() => import("./Scena"), { ssr: false });
 
-type Ambiente = { webgl: boolean; stretto: boolean; tocco: boolean; ridotto: boolean };
+type Ambiente = { webgl: boolean; stretto: boolean; tocco: boolean; ridotto: boolean; compatto: boolean };
+
+/** Schermi dove il pannello va in basso e parte chiuso: telefoni, tablet in verticale, schermi bassi. */
+const COMPATTO = "(max-width: 900px), (max-height: 520px), (orientation: portrait) and (max-width: 1100px)";
 
 function supportaWebGL() {
   try {
@@ -54,12 +57,14 @@ export default function Esperienza() {
         stretto: window.innerWidth < 760,
         tocco: window.matchMedia("(pointer: coarse)").matches,
         ridotto: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+        compatto: window.matchMedia(COMPATTO).matches,
       });
     leggi();
+    if (window.matchMedia(COMPATTO).matches) setPannello(false);
     let attesa: ReturnType<typeof setTimeout>;
     const ridim = () => {
       clearTimeout(attesa);
-      attesa = setTimeout(() => setAmbiente((a) => (a ? { ...a, stretto: window.innerWidth < 760 } : a)), 250);
+      attesa = setTimeout(() => setAmbiente((a) => (a ? { ...a, stretto: window.innerWidth < 760, compatto: window.matchMedia(COMPATTO).matches } : a)), 250);
     };
     window.addEventListener("resize", ridim);
     // i font servono anche alle scritte disegnate nella scena: si aspetta che siano pronti (al massimo 2 s)
@@ -77,12 +82,14 @@ export default function Esperienza() {
     setZonaId(id);
     setVicina(id);
     setDialogo(null);
-    setPannello(true);
+    // sugli schermi piccoli il pannello resta chiuso: si apre al tocco
+    setPannello(!window.matchMedia(COMPATTO).matches);
     if (id !== "cancello") setCancelloAperto(true);
   }, []);
 
   const parla = useCallback((id: string) => {
     setDialogo({ chi: id, percorso: [] });
+    if (window.matchMedia(COMPATTO).matches) setPannello(false);
   }, []);
 
   const cambiaModo = useCallback(
@@ -226,7 +233,7 @@ export default function Esperienza() {
       />
 
       {entrato && (
-        <div className="interfaccia">
+        <div className={`interfaccia${ambiente.compatto ? " interfaccia--compatta" : ""}${pannello ? " pannello-aperto" : ""}${dialogo ? " con-dialogo" : ""}`}>
           <header className="testata">
             <div>
               <p className="firma-nome">{AZIENDA.nome}</p>
@@ -275,7 +282,12 @@ export default function Esperienza() {
           </p>
 
           {/* il pannello della zona, con le fasi */}
-          <aside className={`pannello${pannello ? "" : " pannello--chiuso"}${comandi ? " pannello--nascosto" : ""}`} key={zonaAttiva} aria-labelledby="pannello-titolo">
+          <aside
+            className={`pannello${pannello ? "" : " pannello--chiuso"}${comandi ? " pannello--nascosto" : ""}`}
+            key={zonaAttiva}
+            aria-labelledby="pannello-titolo"
+            onClick={() => !pannello && setPannello(true)}
+          >
             <button className="pannello-maniglia" onClick={() => setPannello((v) => !v)} aria-expanded={pannello}>
               <span className="occhiello">{z.occhiello}</span>
               <span className="pannello-segno" aria-hidden="true">
