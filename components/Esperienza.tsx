@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AZIENDA, PERSONAGGI, ZONE, zona, type Tema, type ZonaId } from "@/content/azienda";
 import { ascoltaCaricamento } from "./mondo/base";
 import Avvio from "./Avvio";
+import { musica } from "./musica";
 import type { Modo, Movimento } from "./Scena";
 
 const Scena = dynamic(() => import("./Scena"), { ssr: false });
@@ -40,6 +41,8 @@ export default function Esperienza() {
   const [pannello, setPannello] = useState(true);
   const [mosso, setMosso] = useState(false);
   const movimento = useRef<Movimento>({ x: 0, y: 0 });
+  const [suono, setSuono] = useState(false);
+  useEffect(() => musica.ascolta(setSuono), []);
 
   useEffect(() => {
     const leggi = () =>
@@ -94,6 +97,9 @@ export default function Esperienza() {
   );
 
   const zonaAttiva = modo === "guida" ? zonaId : vicina;
+  useEffect(() => {
+    musica.zonaAttiva(zonaAttiva);
+  }, [zonaAttiva]);
   const z = zona(zonaAttiva);
   const fase = fasi[zonaAttiva];
   const cambiaFase = (n: number) => {
@@ -190,7 +196,16 @@ export default function Esperienza() {
         </div>
       )}
 
-      <Avvio progresso={progresso} pronta={pronta} onEntra={() => setEntrato(true)} />
+      <Avvio
+        progresso={progresso}
+        pronta={pronta}
+        onEntra={() => {
+          setEntrato(true);
+          // il clic su "Entra" è il gesto che permette al browser di suonare
+          musica.zonaAttiva("cancello");
+          musica.accendi();
+        }}
+      />
 
       {entrato && (
         <div className="interfaccia">
@@ -199,6 +214,22 @@ export default function Esperienza() {
               <p className="firma-nome">{AZIENDA.nome}</p>
               <p className="firma-ruolo">{AZIENDA.luogo}</p>
             </div>
+            <div className="comandi">
+            <button
+              className="suono"
+              onClick={() => musica.interruttore()}
+              aria-pressed={suono}
+              aria-label={suono ? "Spegni la musica" : "Accendi la musica"}
+              title={suono ? "Spegni la musica" : "Accendi la musica"}
+            >
+              <span className={`suono-segno${suono ? " suono-segno--acceso" : ""}`} aria-hidden="true">
+                <i />
+                <i />
+                <i />
+                <i />
+              </span>
+              <span className="suono-testo">{suono ? "Musica" : "Muto"}</span>
+            </button>
             <div className="modi" role="group" aria-label="Modo di visita">
               <button aria-pressed={modo === "guida"} onClick={() => cambiaModo("guida")}>
                 Visita guidata
@@ -206,6 +237,7 @@ export default function Esperienza() {
               <button aria-pressed={modo === "cammina"} onClick={() => cambiaModo("cammina")}>
                 Cammina
               </button>
+            </div>
             </div>
           </header>
 

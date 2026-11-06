@@ -257,3 +257,17 @@ html:has(.senza-3d),html:has(.senza-3d) body{overflow:auto}
 .dialogo-testo{clear:none}
 .scelte{clear:both}
 @media (max-width:759px){.ritratto{width:3.2rem;height:3.2rem}}
+
+/* la musica: quattro barre che ballano quando suona */
+.comandi{display:flex;align-items:center;gap:.6rem}
+.suono{display:inline-flex;align-items:center;gap:.55rem;padding:.55rem .9rem;border:1px solid var(--bordo);border-radius:999px;background:var(--pannello);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);font-family:var(--mono);font-size:.74rem;letter-spacing:.06em;color:var(--testo-tenue)}
+.suono[aria-pressed="true"]{border-color:var(--oro-tenue);color:var(--testo)}
+.suono-segno{display:inline-flex;align-items:flex-end;gap:2px;height:12px}
+.suono-segno i{display:block;width:2px;height:3px;background:var(--grigio);border-radius:1px}
+.suono-segno--acceso i{background:var(--oro);animation:balla .9s steps(4) infinite}
+.suono-segno--acceso i:nth-child(2){animation-delay:.2s}
+.suono-segno--acceso i:nth-child(3){animation-delay:.45s}
+.suono-segno--acceso i:nth-child(4){animation-delay:.1s}
+@keyframes balla{0%,100%{height:3px}50%{height:12px}}
+@media (max-width:759px){.suono-testo{display:none}.suono{padding:.45rem .6rem}.comandi{gap:.4rem}}
+@media (prefers-reduced-motion:reduce){.suono-segno--acceso i{animation:none;height:9px}}
