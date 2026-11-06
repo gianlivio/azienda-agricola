@@ -17,6 +17,25 @@ const RACCOLTA = new THREE.Vector3(1, 0, -39);
 
 type Albero = { x: number; z: number; ry: number; s: number; m: THREE.Matrix4 };
 
+/**
+ * I tre alberi della raccolta (quelli con le reti) e un punto sotto ciascuno, nella chioma, dalla parte
+ * di chi guarda dall'uliveto: lì stanno i raccoglitori con l'asta. lato sposta di lato, in metri.
+ */
+export function usaRaccolta() {
+  const alberi = usaUlivi();
+  return useMemo(() => {
+    const vicini = [...alberi].sort((a, b) => Math.hypot(a.x - RACCOLTA.x, a.z - RACCOLTA.z) - Math.hypot(b.x - RACCOLTA.x, b.z - RACCOLTA.z)).slice(0, 3);
+    const vista = new THREE.Vector3(9.5, 0, -27);
+    const sotto = (i: number, lato = 0, dentro = 0.85): [number, number, number] => {
+      const a = vicini[i % vicini.length];
+      const d = vista.clone().sub(new THREE.Vector3(a.x, 0, a.z)).normalize();
+      const l = new THREE.Vector3(-d.z, 0, d.x);
+      return [a.x + d.x * dentro + l.x * lato, 0, a.z + d.z * dentro + l.z * lato];
+    };
+    return { vicini, sotto };
+  }, [alberi]);
+}
+
 export function usaUlivi() {
   return useMemo(() => {
     const caso = generatore(2026);

@@ -13,8 +13,8 @@ import Uliveto from "./mondo/Uliveto";
 import Frantoio from "./mondo/Frantoio";
 import Persone from "./mondo/Persone";
 import Oggetti from "./mondo/Oggetti";
-import Furgone from "./mondo/Furgone";
-import { ALTROVE, FURGONE_FATTORIA, altrove } from "@/content/luoghi";
+import Furgone, { Cartello } from "./mondo/Furgone";
+import { ALTROVE, CARTELLO_ULIVETI, FURGONE_FATTORIA, altrove } from "@/content/luoghi";
 
 export type Modo = "guida" | "cammina";
 export type Movimento = { x: number; y: number };
@@ -136,8 +136,9 @@ const AREE: [ZonaId, number, number][] = [
 const V = (x: number, z: number) => new THREE.Vector3(x, 0, z);
 const VA = (x: number, z: number) => new THREE.Vector3(...altrove([x, 0, z]));
 const STRADE = {
-  esceFattoria: [V(1.6, 5.7), V(0, 7.6), V(3, 9.6), V(14, 8.4), V(34, 7), V(62, 6.5)],
-  entraFattoria: [V(62, 6.5), V(34, 7), V(14, 8.4), V(3, 9.6), V(0, 7.6), V(1.5, 5.6), V(FURGONE_FATTORIA.p[0], FURGONE_FATTORIA.p[2])],
+  esceFattoria: [V(-3.2, 1.2), V(-0.6, 4.6), V(0, 7.6), V(3, 9.6), V(14, 8.4), V(34, 7), V(62, 6.5)],
+  // rientrando fa il giro dietro il parcheggio, per fermarsi di nuovo col muso verso il cancello
+  entraFattoria: [V(62, 6.5), V(34, 7), V(14, 8.4), V(3, 9.6), V(0, 7.6), V(0, 3.5), V(-2, -3), V(-5, -7.5), V(-8, -7), V(-7.2, -5.2), V(FURGONE_FATTORIA.p[0], FURGONE_FATTORIA.p[2])],
   esceUliveto: [VA(12, -22), VA(8, -19), VA(10, -8), VA(13.6, 6), VA(14, 40), VA(14, 75)],
   entraUliveto: [VA(14, 75), VA(14, 30), VA(14, 0), VA(14, -16)],
 };
@@ -200,7 +201,7 @@ function Regia({
     const f = furgone.current as THREE.Group;
     const avanti = new THREE.Vector3(-Math.sin(f.rotation.y), 0, -Math.cos(f.rotation.y));
     return {
-      pos: f.position.clone().addScaledVector(avanti, -8).add(new THREE.Vector3(0, 3.2, 0)),
+      pos: f.position.clone().addScaledVector(avanti, -9.5).add(new THREE.Vector3(0, 3.4, 0)),
       guarda: f.position.clone().addScaledVector(avanti, 5).add(new THREE.Vector3(0, 1.2, 0)),
     };
   };
@@ -247,7 +248,7 @@ function Regia({
       vola(d.pos, d.guarda, 1.8);
       if (schermo.current) {
         const p = schermo.current.querySelector("p");
-        if (p) p.textContent = vaLontano ? "In viaggio verso gli uliveti…" : "Si torna in azienda…";
+        if (p) p.textContent = vaLontano ? "In trattore verso gli uliveti…" : "Si torna in azienda…";
       }
       return;
     }
@@ -546,7 +547,8 @@ export default function Scena(props: Props) {
         <Uliveto fase={props.fasi.uliveto} />
         <Frantoio fase={props.fasi.frantoio} />
       </group>
-      <Furgone ref={furgone} position={parcheggio.p} rotation={[0, parcheggio.r, 0]} />
+      <Furgone ref={furgone} position={parcheggio.p} rotation={[0, parcheggio.r, 0]} onClic={(qui) => props.onVai(qui ? "spiazzo" : "uliveto")} />
+      <Cartello p={CARTELLO_ULIVETI} verso={0.22} onClic={() => props.onVai("uliveto")} />
       <Oggetti fasi={props.fasi} />
       <Persone zonaAndrea={props.zonaId} faseUliveto={props.fasi.uliveto} parlante={props.parlante} onParla={props.onParla} />
       {ZONE.map((z) => (

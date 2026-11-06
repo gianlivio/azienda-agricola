@@ -7,6 +7,7 @@ import { pillola } from "./base";
 import { Fotogrammi, H, L, RIGHE, Y0, type Posa } from "./pixel";
 import { PERSONAGGI, zona, type Azione, type Personaggio, type ZonaId } from "@/content/azienda";
 import { altrove } from "@/content/luoghi";
+import { usaRaccolta } from "./Uliveto";
 
 /*
  * Andrea e i collaboratori. Andrea accompagna la visita: sta nella zona in cui si trova il visitatore,
@@ -146,6 +147,8 @@ export default function Persone({
   const z = zona(zonaAndrea);
   const versoAndrea = Math.atan2(z.camera[0] - z.andrea[0], z.camera[2] - z.andrea[2]);
   const raccolta = faseUliveto === 3;
+  // nella raccolta i raccoglitori stanno sotto gli alberi con le reti, con l'asta nella chioma
+  const { sotto } = usaRaccolta();
   return (
     <group>
       <Figura key={zonaAndrea} p={andrea} pos={z.andrea} verso={versoAndrea} azione="fermo" parla={parlante === "andrea"} saluta onParla={onParla} />
@@ -153,7 +156,7 @@ export default function Persone({
         <Figura
           key={p.id}
           p={p}
-          pos={p.pos as [number, number, number]}
+          pos={p.id === "raccoglitore" && raccolta ? altrove(sotto(0, -0.3)) : (p.pos as [number, number, number])}
           verso={p.verso ?? 0}
           azione={p.id === "raccoglitore" && !raccolta ? "fermo" : (p.azione ?? "fermo")}
           parla={parlante === p.id}
@@ -165,7 +168,7 @@ export default function Persone({
           <Figura
             key={p.id}
             p={p}
-            pos={altrove(i === 0 ? [3.4, 0, -38.2] : [-0.6, 0, -36.8])}
+            pos={altrove(sotto(i + 1, i === 0 ? 0.4 : -0.4))}
             verso={i === 0 ? 2.2 : -0.8}
             azione="abbacchia"
             parla={false}

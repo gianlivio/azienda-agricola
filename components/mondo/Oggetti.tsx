@@ -6,6 +6,7 @@ import { useFrame } from "@react-three/fiber";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
 import { smorza } from "./base";
+import { usaRaccolta } from "./Uliveto";
 import type { ZonaId } from "@/content/azienda";
 import { ALTROVE, CASETTE, SERRA, SPIAZZALE, inSerra, type P3 } from "@/content/luoghi";
 
@@ -97,6 +98,7 @@ const AL_FRANTOIO: Posto[] = [
 ];
 
 export default function Oggetti({ fasi }: { fasi: Record<ZonaId, number> }) {
+  const { sotto } = usaRaccolta();
   return (
     <group>
       {FISSI.map((o, i) => (
@@ -126,9 +128,9 @@ export default function Oggetti({ fasi }: { fasi: Record<ZonaId, number> }) {
         ))}
         {/* uliveto, raccolta: la scala sotto l'albero, le ceste */}
         <InFase visibile={fasi.uliveto === 3}>
-          <Oggetto nome="wooden_ladder" p={[2.6, 0, -40.6]} r={0.9} s={1.6} />
-          <Oggetto nome="wicker_basket_01" p={[0.4, 0.06, -38.0]} r={0.3} />
-          <Oggetto nome="wicker_basket_01" p={[-2.4, 0.06, -39.4]} r={2.1} />
+          <Oggetto nome="wooden_ladder" p={sotto(0, 1.4, 0.5)} r={0.9} s={1.6} />
+          <Oggetto nome="wicker_basket_01" p={sotto(1, -1.2, 1.6)} r={0.3} />
+          <Oggetto nome="wicker_basket_01" p={sotto(2, 1.1, 1.5)} r={2.1} />
           <Oggetto nome="wooden_crate_01" p={[5.2, 0, -35.4]} r={0.4} />
         </InFase>
       </group>

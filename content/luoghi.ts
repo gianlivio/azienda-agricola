@@ -40,8 +40,9 @@ export const CASETTE: { x: number; z: number; l: number; p: number; h: number; r
   { x: 10.4, z: -10.6, l: 4.6, p: 3.8, h: 2.9, r: 0.427, tipo: "intonaco" },
 ];
 
-/** Dove sta il furgone nella fattoria, e dove si ferma all'uliveto. */
-export const FURGONE_FATTORIA: { p: P3; r: number } = { p: [4.2, 0, 3.4], r: 0 };
+/** Dove sta il trattore per gli uliveti nello spiazzale (col muso verso il cancello), e il suo cartello. */
+export const FURGONE_FATTORIA: { p: P3; r: number } = { p: [-5.5, 0, -3], r: 0 };
+export const CARTELLO_ULIVETI: P3 = [-2.6, 0, -1.2];
 
 /** L'area degli uliveti e del frantoio, lontana dalla fattoria: tutto ciò che sta lì è spostato di tanto. */
 export const ALTROVE: P3 = [0, 0, -420];
@@ -57,7 +58,7 @@ export const STRADE_FATTORIA: [number, number][][] = [
   // dalla trazzera allo spiazzale, attraverso il cancello
   [[0, 10], [0, CANCELLO_Z], [0, 0]],
   // dallo spiazzale alla porta del capannone
-  [[-1, -1], [-6, -6.5], [-9.4, -9.6]],
+  [[-1, -1], [-3, -7], [-9.4, -9.6]],
   // dallo spiazzale al campo di mais
   [[3, 0.5], [12, 1], [21, -1.5]],
 ];

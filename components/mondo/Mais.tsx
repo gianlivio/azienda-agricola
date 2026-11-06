@@ -165,7 +165,8 @@ function Ruota({ r, l, x, z }: { r: number; l: number; x: number; z: number }) {
   );
 }
 
-function Trattore({ carico, seminatrice }: { carico: boolean; seminatrice: boolean }) {
+/** Il trattore: il muso verso +x. Col rimorchio delle pannocchie (carico) o con le panche per i visitatori. */
+export function Trattore({ carico, seminatrice, panche = false }: { carico: boolean; seminatrice: boolean; panche?: boolean }) {
   const rosso = "#B3322A";
   const pannocchie = useMemo(() => {
     const caso = generatore(19);
@@ -229,7 +230,7 @@ function Trattore({ carico, seminatrice }: { carico: boolean; seminatrice: boole
           ))}
         </group>
       )}
-      {carico && (
+      {(carico || panche) && (
         <group>
           {/* il rimorchio */}
           <mesh position={[-2.1, 0.95, 0]} castShadow>
@@ -248,7 +249,20 @@ function Trattore({ carico, seminatrice }: { carico: boolean; seminatrice: boole
           </mesh>
           <Ruota r={0.42} l={0.25} x={-2.1} z={0.85} />
           <Ruota r={0.42} l={0.25} x={-2.1} z={-0.85} />
-          {pannocchie.map((p, i) => (
+          {panche &&
+            [-0.5, 0.5].map((z) => (
+              <group key={`p${z}`}>
+                <mesh position={[-2.1, 1.25, z]} castShadow>
+                  <boxGeometry args={[2.3, 0.07, 0.36]} />
+                  <meshLambertMaterial color="#9A6E46" />
+                </mesh>
+                <mesh position={[-2.1, 1.55, z * 1.5]} castShadow>
+                  <boxGeometry args={[2.3, 0.4, 0.05]} />
+                  <meshLambertMaterial color="#8A6040" />
+                </mesh>
+              </group>
+            ))}
+          {carico && pannocchie.map((p, i) => (
             <mesh key={i} position={p.p} rotation={p.r} castShadow>
               <cylinderGeometry args={[0.045, 0.035, 0.24, 7]} />
               <meshLambertMaterial color={i % 5 === 0 ? "#E0B640" : "#EFC64A"} />

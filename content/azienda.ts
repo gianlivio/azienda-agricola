@@ -41,7 +41,7 @@ export const ZONE: Zona[] = [
     occhiello: "Ingresso",
     titolo: "Benvenuti",
     testo:
-      "Dalla trazzera si entra nello spiazzale: le due casette sulla destra, di fronte il capannone dei frutti di bosco, a sinistra il laghetto, in fondo a destra il campo di mais. Gli uliveti e il frantoio sono altrove: ci si va col furgone.",
+      "Dalla trazzera si entra nello spiazzale: le due casette sulla destra, di fronte il capannone dei frutti di bosco, a sinistra il laghetto, in fondo a destra il campo di mais. Gli uliveti e il frantoio sono altrove: ci si va in trattore.",
     camera: [0, 1.7, 17],
     guarda: [0, 2.2, -14],
     segno: [0, 3.8, CANCELLO_Z],
@@ -53,7 +53,7 @@ export const ZONE: Zona[] = [
     occhiello: "Il cuore dell'azienda",
     titolo: "Lo spiazzale",
     testo:
-      "Qui si arriva, si scaricano le cassette, si decide la giornata. Sulla destra le due casette, di fronte il capannone, a sinistra il laghetto per l'irrigazione. Il furgone è qui: porta agli uliveti. Andrea è qui: cliccalo per parlargli.",
+      "Qui si arriva, si scaricano le cassette, si decide la giornata. Sulla destra le due casette, di fronte il capannone, a sinistra il laghetto per l'irrigazione. Il trattore col cartello porta agli uliveti. Andrea è qui: cliccalo per parlargli.",
     camera: [-1.5, 1.7, 4.5],
     guarda: [-2, 2.6, -20],
     segno: [1, 3.2, -1],
@@ -290,7 +290,7 @@ const andrea: Personaggio = {
         },
         {
           d: "Cosa c'è in azienda?",
-          r: "Qui il capannone dei frutti di bosco, con mirtilli, more e lamponi, e il campo di mais. Gli uliveti e il frantoio sono a qualche chilometro: ci andiamo col furgone. Ogni zona ha le sue fasi: le puoi scorrere dal pannello a destra.",
+          r: "Qui il capannone dei frutti di bosco, con mirtilli, more e lamponi, e il campo di mais. Gli uliveti e il frantoio sono a qualche chilometro: ci andiamo in trattore. Ogni zona ha le sue fasi: le puoi scorrere dal pannello a destra.",
           vai: "spiazzo",
         },
       ],
@@ -300,7 +300,7 @@ const andrea: Personaggio = {
       temi: [
         {
           d: "Andiamo agli uliveti?",
-          r: "Andiamo: gli uliveti sono lontani da qui, saliamo sul furgone.",
+          r: "Andiamo: gli uliveti sono lontani da qui, saliamo sul trattore.",
           vai: "uliveto",
         },
         {
