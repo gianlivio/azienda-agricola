@@ -242,3 +242,18 @@ html:has(.senza-3d),html:has(.senza-3d) body{overflow:auto}
   .avvio-centro{mix-blend-mode:normal}
   .pannello,.dialogo,.pannello-testo,.interfaccia{animation:none}
 }
+
+/* dialoghi: la domanda fatta, le scelte secondarie, i due pulsanti per parlare */
+.dialogo-domanda{font-family:var(--mono);font-size:.74rem;letter-spacing:.02em;color:#5A5B55;margin:-.2rem 0 .5rem;padding-left:.7rem;border-left:2px solid var(--oro)}
+.scelte .scelta-tenue{border-color:transparent;background:transparent;color:#5A5B55;text-decoration:underline;text-underline-offset:3px}
+.scelte .scelta-tenue:hover{background:transparent;color:#16171A;border-color:transparent}
+.scelte .scelta-vai{background:var(--verde);border-color:var(--verde);color:#F3F1EB}
+.parla-con{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1.2rem}
+.parla-con .parla{margin-top:0}
+.parla--altro{background:transparent;color:var(--testo);border:1px solid var(--oro-tenue)}
+.parla--altro:hover{border-color:var(--oro)}
+@media (max-width:759px){.parla-con{margin-top:.8rem}.dialogo-domanda{font-size:.66rem}}
+.ritratto{float:left;width:4rem;height:4rem;border-radius:50%;object-fit:cover;margin:.35rem .9rem .2rem 0;border:2px solid var(--oro);box-shadow:0 6px 18px -8px rgba(0,0,0,.5)}
+.dialogo-testo{clear:none}
+.scelte{clear:both}
+@media (max-width:759px){.ritratto{width:3.2rem;height:3.2rem}}

@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AZIENDA, PERSONAGGI, ZONE, zona, type ZonaId } from "@/content/azienda";
+import { AZIENDA, PERSONAGGI, ZONE, zona, type Tema, type ZonaId } from "@/content/azienda";
 import { ascoltaCaricamento } from "./mondo/base";
 import Avvio from "./Avvio";
 import type { Modo, Movimento } from "./Scena";
@@ -33,7 +33,10 @@ export default function Esperienza() {
   const [vicina, setVicina] = useState<ZonaId>("cancello");
   const [fasi, setFasi] = useState(FASI_INIZIALI);
   const [cancelloAperto, setCancelloAperto] = useState(false);
-  const [dialogo, setDialogo] = useState<{ chi: string; nodo: string } | null>(null);
+  /** il dialogo aperto: con chi, e la catena delle domande fatte (vuota = il saluto) */
+  const [dialogo, setDialogo] = useState<{ chi: string; percorso: Tema[] } | null>(null);
+  /** le domande già fatte, per persona e zona: non tornano nel menu */
+  const [chiesti, setChiesti] = useState<Record<string, string[]>>({});
   const [pannello, setPannello] = useState(true);
   const [mosso, setMosso] = useState(false);
   const movimento = useRef<Movimento>({ x: 0, y: 0 });
@@ -73,7 +76,7 @@ export default function Esperienza() {
   }, []);
 
   const parla = useCallback((id: string) => {
-    setDialogo({ chi: id, nodo: "inizio" });
+    setDialogo({ chi: id, percorso: [] });
   }, []);
 
   const cambiaModo = useCallback(
@@ -138,8 +141,32 @@ export default function Esperienza() {
     );
   }
 
-  const personaggio = dialogo ? PERSONAGGI.find((p) => p.id === dialogo.chi) : null;
-  const battuta = personaggio && dialogo ? personaggio.dialogo[dialogo.nodo] : null;
+  const personaggio = dialogo ? PERSONAGGI.find((p) => p.id === dialogo.chi) ?? null : null;
+  // Andrea parla della zona in cui si è; i collaboratori della loro
+  const zonaDialogo: ZonaId = personaggio?.zona ?? zonaAttiva;
+  const copione = personaggio ? personaggio.copioni[zonaDialogo] : undefined;
+  const chiave = `${personaggio?.id}|${zonaDialogo}`;
+  const giaChiesti = chiesti[chiave] ?? [];
+  const faseDialogo = fasi[zonaDialogo];
+  const nomeFase = zona(zonaDialogo).fasi?.[faseDialogo]?.titolo;
+  const ultimo = dialogo && dialogo.percorso.length ? dialogo.percorso[dialogo.percorso.length - 1] : null;
+  const nuove = (temi: (Tema | undefined)[]) => temi.filter((t): t is Tema => !!t && !giaChiesti.includes(t.d));
+  const domande = copione ? (ultimo ? nuove(ultimo.poi ?? []) : nuove([copione.perFase?.[faseDialogo], ...copione.temi])) : [];
+  const testoDialogo = !copione
+    ? ""
+    : ultimo
+      ? ultimo.r
+      : domande.length
+        ? copione.saluto
+        : copione.perFase
+          ? "Su questa fase ti ho detto tutto. Cambia fase dal pannello: a ogni fase c'è qualcosa di diverso da raccontare."
+          : "Ti ho raccontato quello che c'era da sapere qui. Andiamo avanti?";
+  const chiedi = (t: Tema) => {
+    if (!personaggio) return;
+    setChiesti((c) => ({ ...c, [chiave]: [...(c[chiave] ?? []), t.d] }));
+    setDialogo({ chi: personaggio.id, percorso: [...(dialogo?.percorso ?? []), t] });
+  };
+  const collaboratore = PERSONAGGI.find((p) => p.zona === zonaAttiva);
 
   return (
     <>
@@ -232,33 +259,52 @@ export default function Esperienza() {
                     </button>
                   </div>
                 )}
-                {zonaAttiva === "spiazzo" || zonaAttiva === "cancello" ? (
+                <div className="parla-con">
                   <button className="parla" onClick={() => parla("andrea")}>
                     Parla con Andrea
                   </button>
-                ) : null}
+                  {collaboratore && (
+                    <button className="parla parla--altro" onClick={() => parla(collaboratore.id)}>
+                      Parla con chi lavora qui
+                    </button>
+                  )}
+                </div>
               </>
             )}
           </aside>
 
-          {personaggio && battuta && (
-            <aside className="dialogo" aria-live="polite" key={`${dialogo?.chi}-${dialogo?.nodo}`}>
-              <p className="occhiello">{personaggio.ruolo}</p>
-              <h2 className="dialogo-nome">{personaggio.id === "andrea" ? personaggio.nome : personaggio.ruolo.split("·")[1]?.trim()}</h2>
-              <p className="dialogo-testo">{battuta.testo}</p>
+          {personaggio && copione && (
+            <aside className="dialogo" aria-live="polite" key={`${personaggio.id}-${zonaDialogo}-${dialogo?.percorso.length}-${faseDialogo}`}>
+              <p className="occhiello">
+                {personaggio.ruolo}
+                {nomeFase && ` · ${zona(zonaDialogo).titolo}, ${nomeFase.toLowerCase()}`}
+              </p>
+              {personaggio.id === "andrea" && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img className="ritratto" src="/andrea.jpg" alt="Andrea Angilletti nella sua serra" width={64} height={64} />
+              )}
+              <h2 className="dialogo-nome">{personaggio.id === "andrea" ? personaggio.nome : personaggio.ruolo.split("·")[1]?.trim().replace(/^./, (c) => c.toUpperCase())}</h2>
+              {ultimo && <p className="dialogo-domanda">{ultimo.d}</p>}
+              <p className="dialogo-testo">{testoDialogo}</p>
               <div className="scelte">
-                {battuta.scelte.map((s) => (
-                  <button
-                    key={s.etichetta}
-                    onClick={() => {
-                      if (s.va === null) setDialogo(null);
-                      else if (s.va.startsWith("@")) vai(s.va.slice(1) as ZonaId);
-                      else setDialogo({ chi: personaggio.id, nodo: s.va });
-                    }}
-                  >
-                    {s.etichetta}
+                {domande.map((t) => (
+                  <button key={t.d} onClick={() => chiedi(t)}>
+                    {t.d}
                   </button>
                 ))}
+                {ultimo?.vai && (
+                  <button className="scelta-vai" onClick={() => vai(ultimo.vai as ZonaId)}>
+                    Andiamo: {zona(ultimo.vai).nome} →
+                  </button>
+                )}
+                {ultimo && (
+                  <button className="scelta-tenue" onClick={() => setDialogo({ chi: personaggio.id, percorso: [] })}>
+                    Altra domanda
+                  </button>
+                )}
+                <button className="scelta-tenue" onClick={() => setDialogo(null)}>
+                  Grazie, a dopo
+                </button>
               </div>
               <button className="chiudi" onClick={() => setDialogo(null)} aria-label="Chiudi">
                 ×

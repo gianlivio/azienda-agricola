@@ -32,5 +32,7 @@ Su Vercel: importare il repo, nessuna configurazione aggiuntiva.
 
 ## Crediti
 
-Texture e modelli da [Poly Haven](https://polyhaven.com), licenza CC0: stone_wall, clay_roof_tiles_02, red_laterite_soil_stones, dirt_floor, bark_willow_02, qwantani_sunset_puresky, plastic_crate_02, wine_barrel_01, namaqualand_boulder_05, grass_medium_02.
+Texture e modelli da [Poly Haven](https://polyhaven.com), licenza CC0 (gli oggetti in `public/scena/oggetti` compressi con gltf-transform, meshopt e texture webp a 512 px): wooden_ladder, wicker_basket_01, seeding_tray_01, watering_can_metal_01, pot_enamel_01, small_wooden_table_01, planter_pot_clay, outdoor_table_chair_set_01, wooden_crate_01, wooden_bucket_01, shrub_02, jug_01, painted_wooden_bench, stone_wall, clay_roof_tiles_02, red_laterite_soil_stones, dirt_floor, bark_willow_02, qwantani_sunset_puresky, plastic_crate_02, wine_barrel_01, namaqualand_boulder_05, grass_medium_02.
 Font: Newsreader, IBM Plex Sans, IBM Plex Mono (SIL Open Font License).
+
+`public/andrea.jpg`: ritaglio di una foto di Andrea pubblicata da FreshPlaza (© FreshPlaza), usata come ritratto nel dialogo.

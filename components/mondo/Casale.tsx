@@ -388,18 +388,6 @@ function Cose() {
           <meshLambertMaterial color="#5E7A78" />
         </mesh>
       </group>
-      {/* panca sotto il carrubo */}
-      <group position={[8.6, 0, 6.2]} rotation-y={-0.6}>
-        <mesh position={[0, 0.45, 0]} castShadow>
-          <boxGeometry args={[2.2, 0.08, 0.45]} />
-          <meshLambertMaterial color="#7A5A3E" />
-        </mesh>
-        {[-0.9, 0.9].map((x) => (
-          <mesh key={x} material={pietra} position={[x, 0.22, 0]}>
-            <boxGeometry args={[0.3, 0.44, 0.4]} />
-          </mesh>
-        ))}
-      </group>
     </group>
   );
 }

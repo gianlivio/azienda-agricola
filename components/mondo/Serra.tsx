@@ -347,15 +347,6 @@ function Raccolta({ fase }: { fase: number }) {
             <meshLambertMaterial color="#6A4A31" />
           </mesh>
         ))}
-        {/* la pentola di rame */}
-        <mesh position={[0.45, 0.99, -0.1]} castShadow>
-          <cylinderGeometry args={[0.2, 0.18, 0.28, 18, 1, true]} />
-          <meshStandardMaterial color="#B5683C" metalness={0.7} roughness={0.35} side={THREE.DoubleSide} />
-        </mesh>
-        <mesh position={[0.45, 1.06, -0.1]} rotation-x={-Math.PI / 2}>
-          <circleGeometry args={[0.19, 18]} />
-          <meshStandardMaterial color="#3A1630" roughness={0.3} />
-        </mesh>
         {/* i vasetti */}
         {Array.from({ length: 6 }, (_, i) => {
           const x = -0.55 + (i % 3) * 0.26, z = i < 3 ? -0.15 : 0.15;

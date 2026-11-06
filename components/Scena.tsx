@@ -12,6 +12,7 @@ import Mais from "./mondo/Mais";
 import Uliveto from "./mondo/Uliveto";
 import Frantoio from "./mondo/Frantoio";
 import Persone from "./mondo/Persone";
+import Oggetti from "./mondo/Oggetti";
 
 export type Modo = "guida" | "cammina";
 export type Movimento = { x: number; y: number };
@@ -136,7 +137,18 @@ function Regia({ modo, zonaId, movimento, onVicina, onMosso, stretto }: Pick<Pro
     st.current.yaw = v.yaw;
     st.current.pitch = v.pitch;
     camera.rotation.order = "YXZ";
-    if (location.search.includes("subito")) (window as unknown as { __camera: THREE.Camera }).__camera = camera;
+    if (location.search.includes("subito")) {
+      // per le prove automatiche: mettere la camera in un punto, guardando un altro
+      const w = window as unknown as { __camera: THREE.Camera; __guarda: (p: number[], t: number[]) => void };
+      w.__camera = camera;
+      w.__guarda = (p, t) => {
+        camera.position.set(p[0], p[1], p[2]);
+        const v = verso(camera.position, new THREE.Vector3(t[0], t[1], t[2]));
+        st.current.yaw = v.yaw;
+        st.current.pitch = v.pitch;
+        st.current.offYaw = st.current.offPitch = 0;
+      };
+    }
   }, [camera]);
 
   // il volo verso la zona scelta
@@ -401,6 +413,7 @@ export default function Scena(props: Props) {
       <Mais fase={props.fasi.mais} />
       <Uliveto fase={props.fasi.uliveto} />
       <Frantoio fase={props.fasi.frantoio} />
+      <Oggetti fasi={props.fasi} />
       <Persone zonaAndrea={props.zonaId} faseUliveto={props.fasi.uliveto} parlante={props.parlante} onParla={props.onParla} />
       {ZONE.map((z) => (
         <Segnaposto key={z.id} id={z.id} attivo={props.modo === "guida" && props.zonaId === z.id} onVai={props.onVai} />
